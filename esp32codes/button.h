@@ -1,5 +1,5 @@
-#define buttonPin 12
-#define ledPin    13
+#define buttonPin 13
+#define ledPin    15
 byte gameStarted = 0;
 
 
@@ -17,7 +17,7 @@ void checkButton()
       gameStarted = 1;
     }
     
-    delay(200);
+    delay(500);
     digitalWrite(ledPin, LOW);
   }
 }

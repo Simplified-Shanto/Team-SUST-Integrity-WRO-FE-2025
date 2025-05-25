@@ -4,7 +4,7 @@
 #define in2Pin 6 // Direction control
 
 
-#define forwardSpeed 200
+#define forwardSpeed 100
 
 void goForward(int speed)
 {
