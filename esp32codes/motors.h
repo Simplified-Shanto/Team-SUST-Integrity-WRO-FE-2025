@@ -4,7 +4,8 @@
 #define in2Pin 16 // Direction control
 #define LEDC_CHANNEL 6 // LEDC channel to use
 
-#define forwardSpeed 120 // Out of 255
+int forwardSpeed = 120; // Out of 255
+
 
 void goForward(int speed)
 {
