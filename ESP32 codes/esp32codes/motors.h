@@ -1,7 +1,7 @@
 // Pin definitions
 #define pwmPin 2 // PWM pin for motor speed
-#define in1Pin 4 // Direction control
-#define in2Pin 16 // Direction control
+#define in1Pin 16 // Direction control
+#define in2Pin 4 // Direction control
 #define LEDC_CHANNEL 6 // LEDC channel to use
 
 int forwardSpeed = 120; // Out of 255
