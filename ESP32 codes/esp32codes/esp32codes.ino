@@ -8,14 +8,15 @@
 Preferences preferences;
 double Kp = 0;
 double Kd = 0;
-//int forwardSpeed = 120 // Out of 255
+int debugPrint = 0; //Whether we want to print all the variables to the OLED display. 
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(9600);
+  Serial.begin(115200);
   preferences.begin("wrobot", false);
   Kp = preferences.getDouble("Kp", 0);
   Kd = preferences.getDouble("Kd", 0);
+  debugPrint = preferences.getInt("dP", 0);  //dP = debugPrint
   forwardSpeed = preferences.getInt("speed", 0);
 
   pinMode(ledPin, OUTPUT);
@@ -43,9 +44,6 @@ double error = 0;     // The difference between value and setpoint.
 double lastError = 0;
 
 int setPoint = 0;  //Setpoint for the difference between the readings of the left and right sonar.
-
-//Serial.println("Kp = ");
-
 
 void loop() {
   if (Serial.available()) {
@@ -84,6 +82,11 @@ void loop() {
           forwardSpeed = int(constant_value);
           preferences.putInt("speed", forwardSpeed);
           break;
+        case 'D': //Debug print flag
+          debugPrint = int(constant_value); 
+          preferences.putInt("dP", debugPrint); 
+          display.clearDisplay(); 
+         // delay(2000); 
         default:
           break;
       }
@@ -111,6 +114,8 @@ void loop() {
   double PIDangle = error * Kp + (error - lastError) * Kd;
   lastError = error;
 
+  if(debugPrint==1)
+  {
   display.clearDisplay();
   display.setCursor(0, 0);
   display.print(middleSonar.ping_cm());
@@ -129,6 +134,7 @@ void loop() {
   display.print("speed = ");
   display.println(forwardSpeed);
   display.display();
+  }
 
   if (gameStarted == 1) {
     int steer_angle = midAngle;

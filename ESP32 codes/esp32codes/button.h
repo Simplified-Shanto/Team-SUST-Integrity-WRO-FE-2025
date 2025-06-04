@@ -17,7 +17,7 @@ void checkButton()
       gameStarted = 1;
     }
     
-    delay(500);
+    //delay(500);
     digitalWrite(ledPin, LOW);
   }
 }
