@@ -1,12 +1,12 @@
+#Objective: During the lap, the car will stop whenever it faces the Red traffic sign on it's way
+# and if we exchange that traffic sign with a green one, the car will again resume it's mission
+
 #!/usr/bin/env python 3
 import cv2
 import cv2 as cv
 import numpy as np
 import serial
 import time
-
-#from numpy.ma.testutils import approx
-
 def stackImages(scale,imgArray):
     rows = len(imgArray)
     cols = len(imgArray[0])
@@ -38,7 +38,6 @@ def stackImages(scale,imgArray):
         ver = hor
     return ver
 
-
 # ser = serial.Serial('COM4', 115200)
 # # Whenever the serial communication is established, the arduino resets,
 # # so we are allowing arduino to have 3 seconds to be completely ready
@@ -48,13 +47,21 @@ def stackImages(scale,imgArray):
 # ser.reset_input_buffer()
 # print("Serial is okay:)")
 
+# Traffic sign colors
+blue_lower = np.array([95, 157, 84])
+blue_upper = np.array([122, 255, 255])
+
+red_lower = np.array([0, 142, 40])
+red_upper = np.array([179, 255, 250])
+
+
 def empty():
     pass
-
 cv.namedWindow("Parameters")
 cv.resizeWindow("Parameters",640, 240)
-cv.createTrackbar("Threshold1", "Parameters", 83, 255, empty)
-cv.createTrackbar("Threshold2", "Parameters", 115, 255, empty)
+cv.createTrackbar("Threshold1", "Parameters", 20, 255, empty)
+cv.createTrackbar("Threshold2", "Parameters", 50, 255, empty)
+cv.createTrackbar("Min Area", "Parameters", 20, 200, empty)
 # Here "empty" is the name of the function, that will be called each time
 # there's a change in the trackbar
 
@@ -76,33 +83,39 @@ def getContours(img, imgContour): # one is the input image, imgContour - is the 
 
     for contour in contours:
         area = cv.contourArea(contour)
-        if area > 1000:
+        minArea = cv.getTrackbarPos("Min Area", "Parameters")
+        minArea = minArea*1000
+        if area > minArea:
+            print(area)
             cv.drawContours(imgContour, contour, -1, (255, 0, 255), 7)
-            # peri is the perimeter of the contour
-            peri = cv2.arcLength(contour, True) # True indicates that the contour is closed
-            #Purpose of approxPolyDP: Instead of hundreds of small points, you get a few key points describing the shape.
-            approx = cv2.approxPolyDP(contour, 0.02*peri, True)
-            print(len(approx))
+            # # peri is the perimeter of the contour
+            # peri = cv2.arcLength(contour, True) # True indicates that the contour is closed
+            # #Purpose of approxPolyDP: Instead of hundreds of small points, you get a few key points describing the shape.
+            # approx = cv2.approxPolyDP(contour, 0.02*peri, True)
+            # print(len(approx))
 
 # try:
 while True:
     # Reading images from the webcam stream.
     success, img = cap.read()
-    imgContour = img.copy() # we'll draw contours on imgContour
+    imgHSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    blueMask = cv2.inRange(imgHSV, blue_lower, blue_upper)
+    imgBlueMasked = cv2.bitwise_and(img, img, mask = blueMask)
 
-    imgBlur = cv.GaussianBlur(img, (7, 7), 1)
-    imgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    imgContour = img.copy() # we'll draw contours on imgContour
+    imgBlur = cv.GaussianBlur(imgBlueMasked, (7, 7), 1)
+    imgGray = cv.cvtColor(imgBlueMasked, cv.COLOR_BGR2GRAY)
     threshold1 = cv2.getTrackbarPos("Threshold1", "Parameters")
     threshold2 = cv2.getTrackbarPos("Threshold2","Parameters")
     imgCanny = cv.Canny(imgGray, threshold1, threshold2)
     #Defines the size of the “stamp” for dilation — a bigger kernel thickens edges more.
     kernel = np.ones((5,5))
-    #dilation: Thickens detected edges, connects gaps, makes contours easier to find.
+    # #dilation: Thickens detected edges, connects gaps, makes contours easier to find.
     imgDil = cv.dilate(imgCanny, kernel, iterations = 1)
 
     getContours(imgDil, imgContour)
-
-    imgStack = stackImages(0.8, ([[img, imgBlur, imgGray, imgCanny], [imgDil, imgContour, imgDil, imgDil]]))
+    # imgStack = stackImages(0.8, ([[img, imgBlur, imgGray, imgCanny], [imgDil, imgContour, imgDil, imgDil]]))
+    imgStack = stackImages(0.5, ([[img, imgHSV, imgBlueMasked], [imgContour, imgContour, imgContour]]))
     cv.imshow("Stacked Images", imgStack)
     if (cv.waitKey(1) & 0xFF)== ord('q'):
         break
