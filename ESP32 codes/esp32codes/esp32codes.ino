@@ -86,6 +86,7 @@ void loop() {
           debugPrint = int(constant_value); 
           preferences.putInt("dP", debugPrint); 
           display.clearDisplay(); 
+          display.display(); 
          // delay(2000); 
         default:
           break;
