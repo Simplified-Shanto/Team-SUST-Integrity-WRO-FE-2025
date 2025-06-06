@@ -6,6 +6,8 @@ import cv2 as cv
 import numpy as np
 import serial
 import time
+
+debug = 0
 def stackImages(scale,imgArray):
     rows = len(imgArray)
     cols = len(imgArray[0])
@@ -46,15 +48,14 @@ time.sleep(3)
 ser.reset_input_buffer()
 print("Serial is okay:)")
 
-message = "y;"  #Starting command for the car
-ser.write(message.encode('utf-8'))
+
 
 # Traffic sign colors
 blue_lower = np.array([95, 157, 84])
 blue_upper = np.array([122, 255, 255])
 
-red_lower = np.array([0, 142, 40])
-red_upper = np.array([179, 255, 250])
+red_lower = np.array([0, 80, 51])
+red_upper = np.array([21, 255, 255])
 
 
 def empty():
@@ -76,7 +77,7 @@ cap.set(10, 150)
 print("Camera Setup done!")
 
 
-def getContours(img, imgContour): # one is the input image, imgContour - is the output image having the contours drawn on it.
+def getContours(img, imgContour, color): # one is the input image, imgContour - is the output image having the contours drawn on it.
     #cv.RETR_EXTERNAL - this parameter is called retrieval method
     # we have 2 main types of retrieval methods
     # the external retrieval method returns the extreme outer corners
@@ -90,40 +91,58 @@ def getContours(img, imgContour): # one is the input image, imgContour - is the 
         if area > minArea:
             print(area)
             cv.drawContours(imgContour, contour, -1, (255, 0, 255), 7)
-            message = "x;" #Stop command for the car
+            message = " "
+            if color=="blue":
+                message = "x;" #Stop command for the car
+            elif color == "red":
+                message = "y;"
             ser.write(message.encode('utf-8'))
-            # # peri is the perimeter of the contour
-            # peri = cv2.arcLength(contour, True) # True indicates that the contour is closed
-            # #Purpose of approxPolyDP: Instead of hundreds of small points, you get a few key points describing the shape.
-            # approx = cv2.approxPolyDP(contour, 0.02*peri, True)
-            # print(len(approx))
 
-# try:
+
 while True:
     # Reading images from the webcam stream.
     success, img = cap.read()
     imgHSV = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+
+    threshold1 = cv.getTrackbarPos("Threshold1", "Parameters")
+    threshold2 = cv.getTrackbarPos("Threshold2", "Parameters")
+
+    ############Blue Traffic Sign Detection############################
     blueMask = cv.inRange(imgHSV, blue_lower, blue_upper)
     imgBlueMasked = cv.bitwise_and(img, img, mask = blueMask)
-    redMask = cv.inRange(imgHSV, red_lower, red_upper)
-    imgRedMasked = cv.bitwise_and(img, img, mask = redMask)
-
-    imgContour = img.copy() # we'll draw contours on imgContour
-    imgBlur = cv.GaussianBlur(imgBlueMasked, (7, 7), 1)
-    imgGray = cv.cvtColor(imgBlueMasked, cv.COLOR_BGR2GRAY)
-    threshold1 = cv.getTrackbarPos("Threshold1", "Parameters")
-    threshold2 = cv.getTrackbarPos("Threshold2","Parameters")
-    imgCanny = cv.Canny(imgGray, threshold1, threshold2)
+    imgContourBlue = img.copy() # we'll draw contours on imgContour
+    #imgBlur = cv.GaussianBlur(imgBlueMasked, (7, 7), 1)
+    imgGrayBlue = cv.cvtColor(imgBlueMasked, cv.COLOR_BGR2GRAY)
+    imgCanny = cv.Canny(imgGrayBlue, threshold1, threshold2)
     #Defines the size of the “stamp” for dilation — a bigger kernel thickens edges more.
     kernel = np.ones((5,5))
     # #dilation: Thickens detected edges, connects gaps, makes contours easier to find.
     imgDil = cv.dilate(imgCanny, kernel, iterations = 1)
+    getContours(imgDil, imgContourBlue, "blue")
 
-    getContours(imgDil, imgContour)
-    # imgStack = stackImages(0.8, ([[img, imgBlur, imgGray, imgCanny], [imgDil, imgContour, imgDil, imgDil]]))
-    imgStack = stackImages(0.5, ([[img, imgHSV, imgBlueMasked], [imgContour, imgContour, imgContour]]))
-    cv.imshow("Stacked Images", imgStack)
+    ############ Red Traffic Sign Detection #########################
+    redMask = cv.inRange(imgHSV, red_lower, red_upper)
+    imgRedMasked = cv.bitwise_and(img, img, mask=redMask)
+    imgContourRed = img.copy()  # we'll draw contours on imgContour
+    # imgBlur = cv.GaussianBlur(imgBlueMasked, (7, 7), 1)
+    imgGrayRed = cv.cvtColor(imgRedMasked, cv.COLOR_BGR2GRAY)
+    imgCanny = cv.Canny(imgGrayRed, threshold1, threshold2)
+    # Defines the size of the “stamp” for dilation — a bigger kernel thickens edges more.
+    kernel = np.ones((5, 5))
+    # #dilation: Thickens detected edges, connects gaps, makes contours easier to find.
+    imgDil = cv.dilate(imgCanny, kernel, iterations=1)
+    getContours(imgDil, imgContourRed, "red")
+
+    if debug==1:
+        imgStack = stackImages(0.5, ([[img, imgHSV, imgBlueMasked], [imgRedMasked, imgContourBlue, imgContourRed]]))
+        cv.imshow("Stacked Images", imgStack)
+
     if (cv.waitKey(1) & 0xFF)== ord('q'):
+        #After we are done with serial communication we'll close it.
+        # Because this might cause serial conflict, if another program
+        # tries to access this serial port
+        print("Serial communication is stopped")
+        ser.close()
         break
 
 
