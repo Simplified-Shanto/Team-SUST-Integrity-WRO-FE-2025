@@ -8,7 +8,7 @@
 Preferences preferences;
 double Kp = 0;
 double Kd = 0;
-int debugPrint = 0; //Whether we want to print all the variables to the OLED display. 
+int debugPrint = 0;  //Whether we want to print all the variables to the OLED display.
 
 void setup() {
   // put your setup code here, to run once:
@@ -58,16 +58,13 @@ void loop() {
     // Serial.println(constant_value); //Though there are more decimal places in the variable,
     //                                 // the print function only prints upto two decimal places
     if (command == "x") {  // Commands the car to stop
-      if (gameStarted) {
-        gameStarted = 0;
-        goForward(0);
-        steering_servo.write(midAngle);
-      }
-      else
-      {
-        gameStarted = 1; 
-        goForward(forwardSpeed); 
-      }
+
+      gameStarted = 0;
+      goForward(0);
+      steering_servo.write(midAngle);
+    } else if (command == "y") {
+      gameStarted = 1;
+      goForward(forwardSpeed);
     } else {
       switch (constant_name) {
         case 'p':  //Proportional of PID
@@ -82,12 +79,12 @@ void loop() {
           forwardSpeed = int(constant_value);
           preferences.putInt("speed", forwardSpeed);
           break;
-        case 'D': //Debug print flag
-          debugPrint = int(constant_value); 
-          preferences.putInt("dP", debugPrint); 
-          display.clearDisplay(); 
-          display.display(); 
-         // delay(2000); 
+        case 'D':  //Debug print flag
+          debugPrint = int(constant_value);
+          preferences.putInt("dP", debugPrint);
+          display.clearDisplay();
+          display.display();
+          // delay(2000);
         default:
           break;
       }
@@ -115,35 +112,34 @@ void loop() {
   double PIDangle = error * Kp + (error - lastError) * Kd;
   lastError = error;
 
-  if(debugPrint==1)
-  {
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.print(middleSonar.ping_cm());
-  display.print(" ");
-  display.print(rightSonar.ping_cm());
-  display.print(" ");
-  display.print(leftSonar.ping_cm());
-  display.println();
-  // display.setCursor(0, 30);
-  display.print("ang = ");
-  display.println(int(PIDangle));
-  display.print("Kp:");
-  display.println(Kp);
-  display.print("Kd:");
-  display.println(Kd);
-  display.print("speed = ");
-  display.println(forwardSpeed);
-  display.display();
+  if (debugPrint == 1) {
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.print(middleSonar.ping_cm());
+    display.print(" ");
+    display.print(rightSonar.ping_cm());
+    display.print(" ");
+    display.print(leftSonar.ping_cm());
+    display.println();
+    // display.setCursor(0, 30);
+    display.print("ang = ");
+    display.println(int(PIDangle));
+    display.print("Kp:");
+    display.println(Kp);
+    display.print("Kd:");
+    display.println(Kd);
+    display.print("speed = ");
+    display.println(forwardSpeed);
+    display.display();
   }
 
-  if (gameStarted == 1) {
-    int steer_angle = midAngle;
-    if (PIDangle > 0) {
-      steer_angle = midAngle + min(halfAngleRange, PIDangle);
-    } else {
-      steer_angle = midAngle - min(halfAngleRange, abs(PIDangle));
-    }
-    steering_servo.write(steer_angle);
-  }
+  // if (gameStarted == 1) {
+  //   int steer_angle = midAngle;
+  //   if (PIDangle > 0) {
+  //     steer_angle = midAngle + min(halfAngleRange, PIDangle);
+  //   } else {
+  //     steer_angle = midAngle - min(halfAngleRange, abs(PIDangle));
+  //   }
+  //   steering_servo.write(steer_angle);
+  // }
 }

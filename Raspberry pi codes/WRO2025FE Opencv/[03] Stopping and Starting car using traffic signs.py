@@ -2,7 +2,6 @@
 # and if we exchange that traffic sign with a green one, the car will again resume it's mission
 
 #!/usr/bin/env python 3
-import cv2
 import cv2 as cv
 import numpy as np
 import serial
@@ -17,10 +16,10 @@ def stackImages(scale,imgArray):
         for x in range ( 0, rows):
             for y in range(0, cols):
                 if imgArray[x][y].shape[:2] == imgArray[0][0].shape [:2]:
-                    imgArray[x][y] = cv2.resize(imgArray[x][y], (0, 0), None, scale, scale)
+                    imgArray[x][y] = cv.resize(imgArray[x][y], (0, 0), None, scale, scale)
                 else:
-                    imgArray[x][y] = cv2.resize(imgArray[x][y], (imgArray[0][0].shape[1], imgArray[0][0].shape[0]), None, scale, scale)
-                if len(imgArray[x][y].shape) == 2: imgArray[x][y]= cv2.cvtColor( imgArray[x][y], cv2.COLOR_GRAY2BGR)
+                    imgArray[x][y] = cv.resize(imgArray[x][y], (imgArray[0][0].shape[1], imgArray[0][0].shape[0]), None, scale, scale)
+                if len(imgArray[x][y].shape) == 2: imgArray[x][y]= cv.cvtColor( imgArray[x][y], cv.COLOR_GRAY2BGR)
         imageBlank = np.zeros((height, width, 3), np.uint8)
         hor = [imageBlank]*rows
         hor_con = [imageBlank]*rows
@@ -30,22 +29,25 @@ def stackImages(scale,imgArray):
     else:
         for x in range(0, rows):
             if imgArray[x].shape[:2] == imgArray[0].shape[:2]:
-                imgArray[x] = cv2.resize(imgArray[x], (0, 0), None, scale, scale)
+                imgArray[x] = cv.resize(imgArray[x], (0, 0), None, scale, scale)
             else:
-                imgArray[x] = cv2.resize(imgArray[x], (imgArray[0].shape[1], imgArray[0].shape[0]), None,scale, scale)
-            if len(imgArray[x].shape) == 2: imgArray[x] = cv2.cvtColor(imgArray[x], cv2.COLOR_GRAY2BGR)
+                imgArray[x] = cv.resize(imgArray[x], (imgArray[0].shape[1], imgArray[0].shape[0]), None,scale, scale)
+            if len(imgArray[x].shape) == 2: imgArray[x] = cv.cvtColor(imgArray[x], cv.COLOR_GRAY2BGR)
         hor= np.hstack(imgArray)
         ver = hor
     return ver
 
-# ser = serial.Serial('COM4', 115200)
-# # Whenever the serial communication is established, the arduino resets,
-# # so we are allowing arduino to have 3 seconds to be completely ready
-# # for serial communication
-# time.sleep(3)
-# # At startup we have a fresh buffer with nothing in it.
-# ser.reset_input_buffer()
-# print("Serial is okay:)")
+ser = serial.Serial('COM17', 115200)
+# Whenever the serial communication is established, the arduino resets,
+# so we are allowing arduino to have 3 seconds to be completely ready
+# for serial communication
+time.sleep(3)
+# At startup we have a fresh buffer with nothing in it.
+ser.reset_input_buffer()
+print("Serial is okay:)")
+
+message = "y;"  #Starting command for the car
+ser.write(message.encode('utf-8'))
 
 # Traffic sign colors
 blue_lower = np.array([95, 157, 84])
@@ -88,6 +90,8 @@ def getContours(img, imgContour): # one is the input image, imgContour - is the 
         if area > minArea:
             print(area)
             cv.drawContours(imgContour, contour, -1, (255, 0, 255), 7)
+            message = "x;" #Stop command for the car
+            ser.write(message.encode('utf-8'))
             # # peri is the perimeter of the contour
             # peri = cv2.arcLength(contour, True) # True indicates that the contour is closed
             # #Purpose of approxPolyDP: Instead of hundreds of small points, you get a few key points describing the shape.
@@ -98,15 +102,17 @@ def getContours(img, imgContour): # one is the input image, imgContour - is the 
 while True:
     # Reading images from the webcam stream.
     success, img = cap.read()
-    imgHSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    blueMask = cv2.inRange(imgHSV, blue_lower, blue_upper)
-    imgBlueMasked = cv2.bitwise_and(img, img, mask = blueMask)
+    imgHSV = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+    blueMask = cv.inRange(imgHSV, blue_lower, blue_upper)
+    imgBlueMasked = cv.bitwise_and(img, img, mask = blueMask)
+    redMask = cv.inRange(imgHSV, red_lower, red_upper)
+    imgRedMasked = cv.bitwise_and(img, img, mask = redMask)
 
     imgContour = img.copy() # we'll draw contours on imgContour
     imgBlur = cv.GaussianBlur(imgBlueMasked, (7, 7), 1)
     imgGray = cv.cvtColor(imgBlueMasked, cv.COLOR_BGR2GRAY)
-    threshold1 = cv2.getTrackbarPos("Threshold1", "Parameters")
-    threshold2 = cv2.getTrackbarPos("Threshold2","Parameters")
+    threshold1 = cv.getTrackbarPos("Threshold1", "Parameters")
+    threshold2 = cv.getTrackbarPos("Threshold2","Parameters")
     imgCanny = cv.Canny(imgGray, threshold1, threshold2)
     #Defines the size of the “stamp” for dilation — a bigger kernel thickens edges more.
     kernel = np.ones((5,5))
