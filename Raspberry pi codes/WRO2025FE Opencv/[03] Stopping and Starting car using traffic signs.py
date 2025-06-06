@@ -146,27 +146,6 @@ while True:
         break
 
 
-
-
-
-
-    '''
-    
-    
-
-    cv.imshow("Image", img)
-    '''
-
-
-    '''
-    #time.sleep(1)
-    #message = "l:" + str(counter) + ";"
-    message = "x;" #Stopping command for the car.
-    ser.write(message.encode('utf-8'))
-    print(message)
-
-    '''
-
 # except KeyboardInterrupt:
 #     # After we are done with serial communication we'll close it.
 #     # Because this might cause serial conflict, if another program
