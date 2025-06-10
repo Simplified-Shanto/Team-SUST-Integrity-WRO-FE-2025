@@ -6,6 +6,16 @@ import numpy as np
 import serial
 import time
 debug = 1
+#ser = serial.Serial('COM4', 115200)
+ser = serial.Serial('/dev/esp32_serial', 115200)
+# Whenever the serial communication is established, the arduino resets,
+# so we are allowing arduino to have 3 seconds to be completely ready
+# for serial communication
+time.sleep(3)
+# At startup we have a fresh buffer with nothing in it.
+ser.reset_input_buffer()
+print("Serial is okay:)")
+
 def stackImages(scale,imgArray):
     rows = len(imgArray)
     cols = len(imgArray[0])
@@ -36,14 +46,6 @@ def stackImages(scale,imgArray):
         hor= np.hstack(imgArray)
         ver = hor
     return ver
-ser = serial.Serial('COM4', 115200)
-# Whenever the serial communication is established, the arduino resets,
-# so we are allowing arduino to have 3 seconds to be completely ready
-# for serial communication
-time.sleep(3)
-# At startup we have a fresh buffer with nothing in it.
-ser.reset_input_buffer()
-print("Serial is okay:)")
 
 # Traffic sign colors
 blue_lower = np.array([95, 157, 84])
