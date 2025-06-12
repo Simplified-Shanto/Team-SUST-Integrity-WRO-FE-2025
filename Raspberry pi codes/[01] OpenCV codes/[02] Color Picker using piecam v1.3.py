@@ -58,7 +58,8 @@ cv2.createTrackbar("Value Max", "TrackBars", 255, 255, empty)
 
 
 while True:
-    img = picam2.capture_array()
+    img = picam2.capture_array() 
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     imgHSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     h_min = cv2.getTrackbarPos("Hue Min","TrackBars")
     h_max = cv2.getTrackbarPos("Hue Max","TrackBars")
@@ -74,8 +75,8 @@ while True:
     imgResult = cv2.bitwise_and(img, img, mask = mask)
 
 
-    #imgStack = stackImages(0.5, ([img, imgHSV], [mask, imgResult]))
-    #imgStack = cv2.flip(imgStack, 1)
+    imgStack = stackImages(0.5, ([img, imgHSV], [mask, imgResult]))
+    imgStack = cv2.flip(imgStack, 1)
 
-    cv2.imshow("HSV", img)
+    cv2.imshow("Stacked Images", imgStack)
     cv2.waitKey(1)

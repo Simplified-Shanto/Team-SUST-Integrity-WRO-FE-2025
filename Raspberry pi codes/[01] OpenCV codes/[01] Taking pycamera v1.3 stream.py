@@ -9,6 +9,7 @@ picam2.start()
 
 while True:
     frame = picam2.capture_array()
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
     cv2.imshow("Picamera2 Preview", frame)
 
     # Press 'q' to quit
