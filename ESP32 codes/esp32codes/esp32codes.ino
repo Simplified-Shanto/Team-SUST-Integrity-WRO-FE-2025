@@ -21,6 +21,9 @@ void setup() {
 
   pinMode(ledPin, OUTPUT);
   pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(button2Pin, INPUT_PULLUP); 
+  pinMode(buzzerPin, OUTPUT); 
+  digitalWrite(buzzerPin, LOW); 
 
   ESP32PWM::allocateTimer(0);
   steering_servo.setPeriodHertz(50);                     // standard 50 hz servo
@@ -96,6 +99,7 @@ void loop() {
   int frontDistance = middleSonar.ping_cm();
   int leftDistance = leftSonar.ping_cm();
   int rightDistance = rightSonar.ping_cm();
+  int backDistance = backSonar.ping_cm(); 
 
   if (leftDistance == 0) {
     leftDistance = 100;
@@ -120,6 +124,8 @@ void loop() {
     display.print(rightSonar.ping_cm());
     display.print(" ");
     display.print(leftSonar.ping_cm());
+    display.print(" ");
+    display.print(backSonar.ping_cm());
     display.println();
     // display.setCursor(0, 30);
     display.print("ang = ");
