@@ -1,13 +1,13 @@
 import numpy as np
 import cv2
+from picamera2 import Picamera2
 
 
-frameWidth = 640
-frameHeight = 480
-cap = cv2.VideoCapture(0)
-cap.set(3, frameWidth)
-cap.set(4, frameHeight)
-cap.set(10, 150)
+picam2 = Picamera2()
+config = picam2.create_preview_configuration(main={"size": (640, 480)})
+picam2.configure(config)
+picam2.start()
+
 
 def empty():
     pass
@@ -58,7 +58,8 @@ cv2.createTrackbar("Value Max", "TrackBars", 255, 255, empty)
 
 
 while True:
-    success, img = cap.read()
+    img = picam2.capture_array() 
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     imgHSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     h_min = cv2.getTrackbarPos("Hue Min","TrackBars")
     h_max = cv2.getTrackbarPos("Hue Max","TrackBars")
@@ -77,5 +78,5 @@ while True:
     imgStack = stackImages(0.5, ([img, imgHSV], [mask, imgResult]))
     imgStack = cv2.flip(imgStack, 1)
 
-    cv2.imshow("HSV", imgStack)
+    cv2.imshow("Stacked Images", imgStack)
     cv2.waitKey(1)

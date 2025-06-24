@@ -1,13 +1,21 @@
 #Objective: During the lap, the car will stop whenever it faces the Red traffic sign on it's way
 # and if we exchange that traffic sign with a green one, the car will again resume it's mission
-
 #!/usr/bin/env python 3
 import cv2 as cv
 import numpy as np
 import serial
 import time
+debug = 1
+#ser = serial.Serial('COM4', 115200)
+ser = serial.Serial('/dev/esp32_serial', 115200)
+# Whenever the serial communication is established, the arduino resets,
+# so we are allowing arduino to have 3 seconds to be completely ready
+# for serial communication
+time.sleep(3)
+# At startup we have a fresh buffer with nothing in it.
+ser.reset_input_buffer()
+print("Serial is okay:)")
 
-debug = 0
 def stackImages(scale,imgArray):
     rows = len(imgArray)
     cols = len(imgArray[0])
@@ -39,24 +47,11 @@ def stackImages(scale,imgArray):
         ver = hor
     return ver
 
-ser = serial.Serial('COM17', 115200)
-# Whenever the serial communication is established, the arduino resets,
-# so we are allowing arduino to have 3 seconds to be completely ready
-# for serial communication
-time.sleep(3)
-# At startup we have a fresh buffer with nothing in it.
-ser.reset_input_buffer()
-print("Serial is okay:)")
-
-
-
 # Traffic sign colors
 blue_lower = np.array([95, 157, 84])
 blue_upper = np.array([122, 255, 255])
-
 red_lower = np.array([0, 80, 51])
 red_upper = np.array([21, 255, 255])
-
 
 def empty():
     pass
@@ -76,26 +71,30 @@ cap.set(4, frameHeight)
 cap.set(10, 150)
 print("Camera Setup done!")
 
-
+#global last_message 
+last_message = "-"
 def getContours(img, imgContour, color): # one is the input image, imgContour - is the output image having the contours drawn on it.
     #cv.RETR_EXTERNAL - this parameter is called retrieval method
     # we have 2 main types of retrieval methods
     # the external retrieval method returns the extreme outer corners
     contours, hierarchy = cv.findContours(img, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-
-
     for contour in contours:
         area = cv.contourArea(contour)
         minArea = cv.getTrackbarPos("Min Area", "Parameters")
         minArea = minArea*1000
         if area > minArea:
-            print(area)
+            #print(area)
             cv.drawContours(imgContour, contour, -1, (255, 0, 255), 7)
             message = " "
-            if color=="blue":
+            global last_message
+            if color=="blue" and last_message!="x;": # We won't send repetitive stop command
                 message = "x;" #Stop command for the car
-            elif color == "red":
+                last_message = message
+                if debug: print("Stop!")
+            elif color == "red" and last_message!="y;":
                 message = "y;"
+                last_message = message
+                if debug: print("Start!")
             ser.write(message.encode('utf-8'))
 
 
