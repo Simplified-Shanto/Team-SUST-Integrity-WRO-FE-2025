@@ -29,6 +29,14 @@ void setup() {
   steering_servo.setPeriodHertz(50);                     // standard 50 hz servo
   steering_servo.attach(steering_servo_pin, 500, 2400);  // attaches the servo on pin 18 to the servo object
   steering_servo.write(midAngle);
+  delay(1000); 
+  steering_servo.write(rightAngle);
+  delay(1000); 
+  steering_servo.write(midAngle);
+  delay(1000); 
+  steering_servo.write(leftAngle);
+  delay(1000); 
+  
 
   ledcSetup(LEDC_CHANNEL, 1000, 8);     // Set LEDC channel, frequency, and resolution
   ledcAttachPin(pwmPin, LEDC_CHANNEL);  // Attach the GPIO pin to the LEDC channel
@@ -126,6 +134,8 @@ void loop() {
     display.print(leftSonar.ping_cm());
     display.print(" ");
     display.print(backSonar.ping_cm());
+    display.print(" ");
+    display.print(analogRead(IRpin));
     display.println();
     // display.setCursor(0, 30);
     display.print("ang = ");
