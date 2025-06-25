@@ -1,6 +1,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <EEPROM.h>
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -31,7 +32,7 @@ struct MenuValue {
 };
 
 MenuValue menuValues[] = {
-  { "Kp", 0.50, true }, { "Kd", 1.20, true }, { "Ki", 0.00, true }, { "Wall Sid", 10, false }, { "Wall Dis", 12, false }, { "White Surf", 0, false }, { "Blue Line", 0, false }, { "Yellow Line", 0, false }, { "Servo Min", 0, false }, { "Servo Mid", 90, false }, { "Servo Max", 180, false }
+  { "Kp", 0.50, true }, { "Kd", 1.20, true }, { "Ki", 0.00, true }, { "Wall Sid", 0, false }, { "Wall Dis", 12, false }, { "White Surf", 1450, false }, { "Blue Line", 1150, false }, { "Yellow Line", 1250, false }, { "Servo Min", 0, false }, { "Servo Mid", 90, false }, { "Servo Max", 180, false }
 };
 const int valueCount = sizeof(menuValues) / sizeof(menuValues[0]);
 
@@ -69,6 +70,9 @@ unsigned long lastMenuDown = 0, lastClickTime = 0;
 unsigned long lastGameDown = 0;
 bool menuWaitingForSecondClick = false;
 
+// Store default values for reset
+float defaultMenuValues[] = {0.50, 1.20, 0.00, 0, 12, 1450, 1150, 1250, 0, 90, 180};
+
 void setup() {
   pinMode(MENU_BUTTON, INPUT_PULLUP);
   pinMode(GAME_BUTTON, INPUT_PULLUP);
@@ -79,6 +83,8 @@ void setup() {
   }
   display.setTextColor(SSD1306_WHITE);
   display.setTextSize(1);
+  EEPROM.begin(4 * valueCount); // 4 bytes per float
+  loadMenuValuesFromEEPROM();
   showGameScreen();
 }
 
@@ -125,6 +131,7 @@ void updateMenuValue(const char* name, float delta) {
     } else {
       ptr->value += (delta > 0) ? 1 : -1;
     }
+    saveMenuValuesToEEPROM();
   }
 }
 
@@ -171,6 +178,8 @@ void handleMenuButton() {
           } else if (strcmp(menuItems[selectedItem], "Sensor Test") == 0) {
             currentMode = SENSOR_TEST_MODE;
             drawSensorMenu();
+          } else if (strcmp(menuItems[selectedItem], "Reset") == 0) {
+            resetMenuValuesToDefault();
           }
         }
       } else {
@@ -329,4 +338,40 @@ void showGameScreen() {
   display.println("== Game Mode ==");
   display.println("Ready to play...");
   display.display();
+}
+
+void saveMenuValuesToEEPROM() {
+  int addr = 0;
+  for (int i = 0; i < valueCount; i++) {
+    EEPROM.put(addr, menuValues[i].value);
+    addr += sizeof(float);
+  }
+  EEPROM.commit();
+}
+
+void loadMenuValuesFromEEPROM() {
+  int addr = 0;
+  for (int i = 0; i < valueCount; i++) {
+    float val;
+    EEPROM.get(addr, val);
+    if (!isnan(val)) menuValues[i].value = val;
+    addr += sizeof(float);
+  }
+}
+
+void resetMenuValuesToDefault() {
+  for (int i = 0; i < valueCount; i++) {
+    menuValues[i].value = defaultMenuValues[i];
+  }
+  saveMenuValuesToEEPROM();
+  showResetConfirmation();
+}
+
+void showResetConfirmation() {
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.println("Values Reset!");
+  display.display();
+  delay(1000);
+  drawMenu();
 }
