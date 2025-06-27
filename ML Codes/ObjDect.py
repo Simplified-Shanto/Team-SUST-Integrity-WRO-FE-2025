@@ -1,0 +1,289 @@
+import time
+import numpy as np
+import cv2
+import json
+
+# --- Configuration ---
+CAMERA_INDEX = 0  # Select which cam will be used
+FRAME_WIDTH = 640
+FRAME_HEIGHT = 480
+TARGET_FPS = 30.0  # Cam FPS
+MIN_WAIT_TIME_MS = 5  # Minimum wait time to ensure GUI responsiveness (e.g., 5ms)
+MIN_OBJECT_AREA = 500  # Object counter area
+
+# Object dimensions and camera focal length for distance estimation (in cm and px)
+# THESE VALUES NEED TO BE CALIBRATED FOR YOUR SPECIFIC SETUP FOR ACCURATE DISTANCE
+KNOWN_WIDTH_CM = 5.0  # Objec width
+FOCAL_LENGTH_PX = 875.0  # Focal length of your camera in pixels
+
+
+# --- Define HSV ranges for Red and Blue (These are crucial and need tuning!) ---
+# Red color mask
+RED_LOWER_1 = np.array([0, 120, 70])
+RED_UPPER_1 = np.array([10, 255, 255])
+RED_LOWER_2 = np.array([170, 120, 70])
+RED_UPPER_2 = np.array([180, 255, 255])
+
+# Blue color range
+BLUE_LOWER = np.array([100, 150, 50])
+BLUE_UPPER = np.array([140, 255, 255])
+
+
+# --- Initialize webcam ---
+cap = cv2.VideoCapture(CAMERA_INDEX)
+
+if not cap.isOpened():
+    print(f"Error: Could not open video stream from camera index {CAMERA_INDEX}.")
+    print(
+        "Please check if the camera is connected and not in use by another application."
+    )
+    exit()
+
+# camera resolution
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
+
+
+def nothing(x):
+    # This function does nothing, it's just a placeholder for trackbar creation
+    pass
+
+
+# --- Create General Trackbar Window
+cv2.namedWindow("General HSV Trackbars", cv2.WINDOW_NORMAL)
+cv2.resizeWindow("General HSV Trackbars", 600, 300)
+
+# IMPORTANT: Give the window time to render BEFORE creating trackbars
+cv2.waitKey(100)  # Wait 100ms for the window to draw
+
+try:
+    cv2.moveWindow("General HSV Trackbars", 10, 10)  # Move to top-left corner
+    cv2.moveWindow("Original Frame", FRAME_WIDTH + 30, 10)  # Position original frame
+    cv2.moveWindow("General Mask", 10, 400)  # Position mask below trackbars
+    cv2.moveWindow(
+        "General Result", FRAME_WIDTH + 30, 400
+    )  # Position result next to mask
+    cv2.moveWindow(
+        "Red/Blue Detection", (FRAME_WIDTH * 2) + 50, 10
+    )  # New window for Red/Blue boxes
+except cv2.error as e:
+    print(f"Could not move window. Error: {e}")
+
+# Create trackbars for general HSV lower and upper bounds
+cv2.createTrackbar("L - H", "General HSV Trackbars", 0, 179, nothing)
+cv2.createTrackbar("L - S", "General HSV Trackbars", 0, 255, nothing)
+cv2.createTrackbar("L - V", "General HSV Trackbars", 0, 255, nothing)
+cv2.createTrackbar("U - H", "General HSV Trackbars", 179, 179, nothing)
+cv2.createTrackbar("U - S", "General HSV Trackbars", 255, 255, nothing)
+cv2.createTrackbar("U - V", "General HSV Trackbars", 255, 255, nothing)
+
+
+def estimate_distance(perceived_dimension_px):
+    """Estimates distance to an object given its perceived dimension in pixels."""
+    if perceived_dimension_px == 0:
+        return 0.0
+    # Distance = (KNOWN_WIDTH_CM * FOCAL_LENGTH_PX) / Perceived_Dimension_PX
+    return round((KNOWN_WIDTH_CM * FOCAL_LENGTH_PX) / perceived_dimension_px, 2)
+
+
+# --- Frame rate control variables ---
+frame_delay_target_ms = int(1000 / TARGET_FPS)
+
+# --- Video Part ---
+while True:
+    current_loop_start_time = time.time()
+
+    ret, frame = cap.read()
+    if not ret:
+        print("Error: Failed to grab frame. Exiting...")
+        break
+
+    # Option 1: Flip horizontally (most common for "mirror" effect)
+    frame = cv2.flip(frame, 1)
+
+    # Resize frame for consistent processing and display
+    frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
+
+    # Create a copy of the frame to draw detection boxes on for the dedicated output window
+    detection_frame = frame.copy()
+
+    # Convert to HSV color space for color filtering
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+    # --- Get Trackbar Positions for general HSV tuning ---
+    l_h = cv2.getTrackbarPos("L - H", "General HSV Trackbars")
+    l_s = cv2.getTrackbarPos("L - S", "General HSV Trackbars")
+    l_v = cv2.getTrackbarPos("L - V", "General HSV Trackbars")
+    u_h = cv2.getTrackbarPos("U - H", "General HSV Trackbars")
+    u_s = cv2.getTrackbarPos("U - S", "General HSV Trackbars")
+    u_v = cv2.getTrackbarPos("U - V", "General HSV Trackbars")
+
+    # Define bounds for the general trackbar mask
+    lower_bound_general = np.array([l_h, l_s, l_v])
+    upper_bound_general = np.array([u_h, u_s, u_v])
+
+    # Create mask and result
+    mask_general = cv2.inRange(hsv, lower_bound_general, upper_bound_general)
+    result_general = cv2.bitwise_and(frame, frame, mask=mask_general)
+
+    # --- Specific Red and Blue Object Detection for Finallll output ---
+
+    # Serial Output
+    json_output = {
+        "RedObject": {
+            "IsRed": False,
+            "RedCounter": 0,
+            "RedDis": 0.0,
+            "RedAxis": {"X": 0, "Y": 0},
+        },
+        "BlueObject": {
+            "IsBlue": False,
+            "BlueCounter": 0,
+            "BlueDis": 0.0,
+            "BlueAxis": {"X": 0, "Y": 0},
+        },
+    }
+
+    # 1. Detect Red objects
+    red_mask1 = cv2.inRange(hsv, RED_LOWER_1, RED_UPPER_1)
+    red_mask2 = cv2.inRange(hsv, RED_LOWER_2, RED_UPPER_2)
+    red_mask_combined = cv2.bitwise_or(red_mask1, red_mask2)
+
+    contours_red, _ = cv2.findContours(
+        red_mask_combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    red_distances_found = []
+
+    for contour in contours_red:
+        area = cv2.contourArea(contour)
+        if area > MIN_OBJECT_AREA:
+            # Get bounding box coordinates
+            x, y, w, h = cv2.boundingRect(contour)
+
+            # Draw  box
+            cv2.rectangle(
+                detection_frame, (x, y), (x + w, y + h), (0, 0, 255), 2
+            )  # Red box
+
+            # Calculate distance
+            distance = estimate_distance(w)  # Assuming 'w' is the known width side
+            red_distances_found.append(distance)
+
+            # Update JSON data for Red
+            json_output["RedObject"]["IsRed"] = True
+            json_output["RedObject"]["RedCounter"] += 1
+            if (
+                json_output["RedObject"]["RedCounter"] == 1
+            ):  # Only store axis for the first detected
+                json_output["RedObject"]["RedAxis"]["X"] = x + w // 2
+                json_output["RedObject"]["RedAxis"]["Y"] = y + h // 2
+
+            # Display text on frame
+            cv2.putText(
+                detection_frame,
+                f"Red {distance:.2f}cm",
+                (x, y - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 0, 255),
+                2,
+            )
+            cv2.putText(
+                detection_frame,
+                f"({x+w//2},{y+h//2})",
+                (x, y + h + 20),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 0, 255),
+                1,
+            )
+
+    if red_distances_found:
+        json_output["RedObject"]["RedDis"] = round(
+            sum(red_distances_found) / len(red_distances_found), 2
+        )
+
+    # 2. Detect Blue objects
+    blue_mask = cv2.inRange(hsv, BLUE_LOWER, BLUE_UPPER)
+
+    contours_blue, _ = cv2.findContours(
+        blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    blue_distances_found = []
+
+    for contour in contours_blue:
+        area = cv2.contourArea(contour)
+        if area > MIN_OBJECT_AREA:
+            # Get bounding box coordinates
+            x, y, w, h = cv2.boundingRect(contour)
+
+            # Draw bounding box
+            cv2.rectangle(
+                detection_frame, (x, y), (x + w, y + h), (255, 0, 0), 2
+            )  # Blue box
+
+            # Calculate distance
+            distance = estimate_distance(w)  # Assuming 'w' is the known width side
+            blue_distances_found.append(distance)
+
+            # Update JSON data for Blue
+            json_output["BlueObject"]["IsBlue"] = True
+            json_output["BlueObject"]["BlueCounter"] += 1
+            if (
+                json_output["BlueObject"]["BlueCounter"] == 1
+            ):  # Only store axis for the first detected
+                json_output["BlueObject"]["BlueAxis"]["X"] = x + w // 2
+                json_output["BlueObject"]["BlueAxis"]["Y"] = y + h // 2
+
+            # Display text on frame
+            cv2.putText(
+                detection_frame,
+                f"Blue {distance:.2f}cm",
+                (x, y - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255, 0, 0),
+                2,
+            )
+            cv2.putText(
+                detection_frame,
+                f"({x+w//2},{y+h//2})",
+                (x, y + h + 20),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (255, 0, 0),
+                1,
+            )
+
+    if blue_distances_found:
+        json_output["BlueObject"]["BlueDis"] = round(
+            sum(blue_distances_found) / len(blue_distances_found), 2
+        )
+
+    # --- Print JSON output to terminal ---
+    print(json.dumps(json_output, indent=4))
+
+    # --- Display Frames ---
+    cv2.imshow("Original Frame", frame)
+    cv2.imshow("General Mask", mask_general)
+    cv2.imshow("General Result", result_general)
+    cv2.imshow(
+        "Red/Blue Detection", detection_frame
+    )  # Display the frame with red/blue boxes
+
+    # --- Frame Rate Control and GUI Event Processing ---
+    processing_time_ms = (time.time() - current_loop_start_time) * 1000
+    wait_time_ms = max(
+        MIN_WAIT_TIME_MS, int(frame_delay_target_ms - processing_time_ms)
+    )
+    key = cv2.waitKey(wait_time_ms) & 0xFF
+
+    if key == ord("q"):
+        print("Exiting program.")
+        break
+
+# --- Closing ---
+cap.release()
+cv2.destroyAllWindows()
