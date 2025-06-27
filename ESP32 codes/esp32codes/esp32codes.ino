@@ -149,13 +149,13 @@ void loop() {
     display.display();
   }
 
-  // if (gameStarted == 1) {
-  //   int steer_angle = midAngle;
-  //   if (PIDangle > 0) {
-  //     steer_angle = midAngle + min(halfAngleRange, PIDangle);
-  //   } else {
-  //     steer_angle = midAngle - min(halfAngleRange, abs(PIDangle));
-  //   }
-  //   steering_servo.write(steer_angle);
-  // }
+  if (gameStarted == 1) {
+    int steer_angle = midAngle;
+    if (PIDangle > 0) {
+      steer_angle = midAngle + min(halfAngleRange, PIDangle);
+    } else {
+      steer_angle = midAngle - min(halfAngleRange, abs(PIDangle));
+    }
+    steering_servo.write(steer_angle);
+  }
 }

@@ -7,7 +7,7 @@ import serial
 import time
 debug = 1
 #ser = serial.Serial('COM4', 115200)
-ser = serial.Serial('/dev/esp32_serial', 115200)
+ser = serial.Serial('/dev/cu.usbserial-130', 115200)
 # Whenever the serial communication is established, the arduino resets,
 # so we are allowing arduino to have 3 seconds to be completely ready
 # for serial communication

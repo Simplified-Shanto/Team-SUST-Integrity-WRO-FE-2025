@@ -2,33 +2,37 @@ import cv2
 import numpy as np
 import json
 
-# Calibrated or assumed values
-KNOWN_WIDTH_CM = 5.0
+# Object size and camera focal length (in cm and px)
+KNOWN_WIDTH_CM = 10.0
+ASPECT_RATIO = 2.0
 FOCAL_LENGTH = 700.0
 
 def detect_color(hsv, mask):
+    # Red color range (two segments due to hue wrap-around)
     red_lower1 = np.array([0, 120, 70])
     red_upper1 = np.array([10, 255, 255])
     red_lower2 = np.array([170, 120, 70])
     red_upper2 = np.array([180, 255, 255])
-    green_lower = np.array([40, 40, 40])
-    green_upper = np.array([90, 255, 255])
+
+    # Blue color range
+    blue_lower = np.array([100, 150, 50])
+    blue_upper = np.array([140, 255, 255])
 
     red_mask1 = cv2.inRange(hsv, red_lower1, red_upper1)
     red_mask2 = cv2.inRange(hsv, red_lower2, red_upper2)
     red_mask = red_mask1 + red_mask2
-    green_mask = cv2.inRange(hsv, green_lower, green_upper)
+    blue_mask = cv2.inRange(hsv, blue_lower, blue_upper)
 
     red_overlap = cv2.bitwise_and(red_mask, red_mask, mask=mask)
-    green_overlap = cv2.bitwise_and(green_mask, green_mask, mask=mask)
+    blue_overlap = cv2.bitwise_and(blue_mask, blue_mask, mask=mask)
 
     red_pixels = cv2.countNonZero(red_overlap)
-    green_pixels = cv2.countNonZero(green_overlap)
+    blue_pixels = cv2.countNonZero(blue_overlap)
 
-    if red_pixels > green_pixels and red_pixels > 100:
+    if red_pixels > blue_pixels and red_pixels > 100:
         return "Red"
-    elif green_pixels > red_pixels and green_pixels > 100:
-        return "Green"
+    elif blue_pixels > red_pixels and blue_pixels > 100:
+        return "Blue"
     else:
         return "Unknown"
 
@@ -46,12 +50,12 @@ def main():
             break
 
         red_count = 0
-        green_count = 0
+        blue_count = 0
         red_distances = []
-        green_distances = []
+        blue_distances = []
 
         red_axis = {"X": 0, "Y": 0}
-        green_axis = {"X": 0, "Y": 0}
+        blue_axis = {"X": 0, "Y": 0}
 
         blurred = cv2.GaussianBlur(frame, (5, 5), 0)
         gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
@@ -66,11 +70,15 @@ def main():
 
             if len(approx) == 4 and area > 1000:
                 x, y, w, h = cv2.boundingRect(approx)
+                rect_aspect = max(w, h) / min(w, h)
+                if not (1.6 <= rect_aspect <= 2.4):
+                    continue
+
                 roi_mask = np.zeros(gray.shape, dtype=np.uint8)
                 cv2.drawContours(roi_mask, [approx], -1, 255, -1)
 
                 color = detect_color(hsv, roi_mask)
-                distance_cm = estimate_distance(w)
+                distance_cm = estimate_distance(max(w, h))
                 center_x = x + w // 2
                 center_y = y + h // 2
 
@@ -79,17 +87,17 @@ def main():
                     red_distances.append(distance_cm)
                     if red_count == 1:
                         red_axis = {"X": center_x, "Y": center_y}
-                elif color == "Green":
-                    green_count += 1
-                    green_distances.append(distance_cm)
-                    if green_count == 1:
-                        green_axis = {"X": center_x, "Y": center_y}
+                elif color == "Blue":
+                    blue_count += 1
+                    blue_distances.append(distance_cm)
+                    if blue_count == 1:
+                        blue_axis = {"X": center_x, "Y": center_y}
 
                 cv2.drawContours(frame, [approx], -1, (0, 255, 0), 2)
                 cv2.putText(frame, f'{color} {distance_cm}cm', (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
         avg_red_distance = round(sum(red_distances) / len(red_distances), 2) if red_distances else 0
-        avg_green_distance = round(sum(green_distances) / len(green_distances), 2) if green_distances else 0
+        avg_blue_distance = round(sum(blue_distances) / len(blue_distances), 2) if blue_distances else 0
 
         json_output = {
             "RedObject": {
@@ -98,11 +106,11 @@ def main():
                 "RedDis": avg_red_distance,
                 "RedAxis": red_axis
             },
-            "GreenObj": {
-                "IsGreen": green_count > 0,
-                "GreenCounter": green_count,
-                "GreenDis": avg_green_distance,
-                "GreenAxis": green_axis
+            "BlueObject": {
+                "IsBlue": blue_count > 0,
+                "BlueCounter": blue_count,
+                "BlueDis": avg_blue_distance,
+                "BlueAxis": blue_axis
             }
         }
 
