@@ -12,18 +12,24 @@ MIN_WAIT_TIME_MS = 5  # Minimum wait time to ensure GUI responsiveness (e.g., 5m
 MIN_OBJECT_AREA = 500  # Minimum contour area to consider an object (adjust as needed)
 
 # Object dimensions and camera focal length for distance estimation (in cm and px)
-KNOWN_WIDTH_CM = 5.0  # Object's physical width (e.g., the 5cm side)
-FOCAL_LENGTH_PX = 875.0  # Focal length of your camera in pixels (CALIBRATE THIS)
+# KNOWN_WIDTH_CM should correspond to the 'w' (width)  of the object
+KNOWN_WIDTH_CM = 5.0  # Object's physical width
+FOCAL_LENGTH_PX = 875.0  # Focal length in pixels 
+
+# --- Safe Zone Configuration (in pixels) ---
+SAFE_ZONE_WIDTH_PX = 100  # Width of the safe zone in the center of the frame
+SAFE_ZONE_LINE_COLOR = (255, 255, 0)  # Cyan color for safe zone lines (BGR)
+SAFE_ZONE_LINE_THICKNESS = 2
 
 
-# --- Define HSV ranges for Red and Blue (These are crucial and need tuning!) ---
-# Red color mask (example values, TUNE THESE WITH THE GENERAL TRACKBARS)
+# --- Define HSV ranges for Red and Blue (Need tuning!) ---
+# Red color mask 
 RED_LOWER_1 = np.array([0, 120, 70])
 RED_UPPER_1 = np.array([10, 255, 255])
 RED_LOWER_2 = np.array([170, 120, 70])
 RED_UPPER_2 = np.array([180, 255, 255])
 
-# Blue color range (example values, TUNE THESE WITH THE GENERAL TRACKBARS)
+# Blue color range 
 BLUE_LOWER = np.array([100, 150, 50])
 BLUE_UPPER = np.array([140, 255, 255])
 
@@ -51,7 +57,6 @@ def nothing(x):
 cv2.namedWindow("General HSV Trackbars", cv2.WINDOW_NORMAL)
 cv2.resizeWindow("General HSV Trackbars", 600, 300)
 
-# IMPORTANT: Give the window time to render BEFORE creating trackbars
 cv2.waitKey(100)  # Wait 100ms for the window to draw
 
 try:
@@ -84,8 +89,14 @@ def estimate_distance(perceived_dimension_px):
     return round((KNOWN_WIDTH_CM * FOCAL_LENGTH_PX) / perceived_dimension_px, 2)
 
 
-# --- Frame rate control variables ---
+# --- Frame rate control  ---
 frame_delay_target_ms = int(1000 / TARGET_FPS)
+
+# --- Calculate Safe Zone Coordinates for drawing and per-object calculation ---
+SAFE_ZONE_CENTER_X = FRAME_WIDTH // 2
+SAFE_ZONE_LEFT_EDGE_X = SAFE_ZONE_CENTER_X - (SAFE_ZONE_WIDTH_PX // 2)
+SAFE_ZONE_RIGHT_EDGE_X = SAFE_ZONE_CENTER_X + (SAFE_ZONE_WIDTH_PX // 2)
+
 
 # --- Video Processing Loop ---
 while True:
@@ -96,16 +107,13 @@ while True:
         print("Error: Failed to grab frame. Exiting...")
         break
 
-    # Flip horizontally (most common for "mirror" effect)
+    # Flip horizontally 
     frame = cv2.flip(frame, 1)
 
-    # Resize frame for consistent processing and display
     frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
-
-    # Create a copy of the frame to draw detection boxes on
     detection_frame = frame.copy()
 
-    # Convert to HSV color space for color filtering
+    # Converting to HSV color 
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # --- Get Trackbar Positions for general HSV tuning ---
@@ -124,30 +132,45 @@ while True:
     mask_general = cv2.inRange(hsv, lower_bound_general, upper_bound_general)
     result_general = cv2.bitwise_and(frame, frame, mask=mask_general)
 
-    # --- Specific Red and Blue Object Detection for JSON output ---
 
-    # Initialize JSON output for this frame, ready for multiple objects
+    # Json Output
     json_output = {
         "RedObject": {
             "IsRed": False,
             "RedCounter": 0,
-            "RedDis": 0.0, # This will be the average distance of all red objects
-            "RedAxis": {} # This will store individual red objects: {"1": {...}, "2": {...}}
+            "RedDis": 0.0,  
+            "RedAxis": {},  
         },
         "BlueObject": {
             "IsBlue": False,
             "BlueCounter": 0,
-            "BlueDis": 0.0, # This will be the average distance of all blue objects
-            "BlueAxis": {} # This will store individual blue objects
-        }
+            "BlueDis": 0.0,  
+            "BlueAxis": {},  
+        },
     }
 
-    # Lists to temporarily store data for calculating averages and populating JSON
+    # Lists to temporarily store data for calculating for Json
     red_distances_list = []
     blue_distances_list = []
-    red_objects_details_unsorted = [] # Store details before sorting
-    blue_objects_details_unsorted = [] # Store details before sorting
+    red_objects_details_unsorted = []
+    blue_objects_details_unsorted = []
 
+    # --- calculate SafeDis and SaDir for an object ---
+    def get_safe_zone_guidance(obj_center_x):
+        safe_dis_px = 0.0
+        sa_dir = "center"
+
+        if obj_center_x < SAFE_ZONE_LEFT_EDGE_X:
+            safe_dis_px = SAFE_ZONE_LEFT_EDGE_X - obj_center_x
+            sa_dir = "right"  # Object is to the left, robot needs to turn right to get it into zone
+        elif obj_center_x > SAFE_ZONE_RIGHT_EDGE_X:
+            safe_dis_px = obj_center_x - SAFE_ZONE_RIGHT_EDGE_X
+            sa_dir = "left"  # Object is to the right, robot needs to turn left to get it into zone
+        else:  # Object is within the safe zone
+            sa_dir = "center"
+            safe_dis_px = 0.0  
+
+        return round(safe_dis_px, 2), sa_dir
 
     # 1. Detect Red objects
     red_mask1 = cv2.inRange(hsv, RED_LOWER_1, RED_UPPER_1)
@@ -161,27 +184,33 @@ while True:
     for contour_idx, contour in enumerate(contours_red):
         area = cv2.contourArea(contour)
         if area > MIN_OBJECT_AREA:
-            x, y, w, h = cv2.boundingRect(contour) # Get bounding box coordinates
-            
-            if w == 0: # Ensure width is not zero to prevent division by zero
+            x, y, w, h = cv2.boundingRect(contour)  # Get bounding box coordinates
+
+            if w == 0: 
                 continue
 
-            distance = estimate_distance(w) # Use 'w' (perceived width) for distance
+            distance = estimate_distance(w)  # Use 'w' for distance
 
             center_x = x + w // 2
             center_y = y + h // 2
 
-            # Store individual object details
-            red_objects_details_unsorted.append({
+            # Calculate safe zone 
+            obj_safe_dis, obj_sa_dir = get_safe_zone_guidance(center_x)
+
+            obj_data = {
                 "X": center_x,
                 "Y": center_y,
-                "Dis": distance
-            })
-            red_distances_list.append(distance) # For calculating overall average
+                "Dis": distance,
+                "SafeDis": obj_safe_dis,
+                "SaDir": obj_sa_dir,  
+            }
+            red_objects_details_unsorted.append(obj_data)
+            red_distances_list.append(distance)  # For calculating overall average
 
-            # Draw box and text on the detection frame (drawing will be based on unsorted order)
-            # The IDs here will match the order of detection, not necessarily distance
-            cv2.rectangle(detection_frame, (x, y), (x + w, y + h), (0, 0, 255), 2) # Red box
+            # Draw box and text on the detection frame
+            cv2.rectangle(
+                detection_frame, (x, y), (x + w, y + h), (0, 0, 255), 2
+            )  # Red box
             cv2.putText(
                 detection_frame,
                 f"Red {distance:.2f}cm",
@@ -193,7 +222,7 @@ while True:
             )
             cv2.putText(
                 detection_frame,
-                f"ID {contour_idx+1} ({center_x},{center_y})", # ID based on detection order
+                f"ID {contour_idx+1} ({center_x},{center_y}) [{obj_sa_dir}]",  # Show direction
                 (x, y + h + 20),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
@@ -201,21 +230,21 @@ while True:
                 1,
             )
 
-    # --- Sort Red objects by distance (closest first) ---
-    red_objects_details_unsorted.sort(key=lambda obj: obj['Dis'])
+    # --- Sort Red objects by distance  ---
+    red_objects_details_unsorted.sort(key=lambda obj: obj["Dis"])
 
-    # Populate JSON for Red objects
+    #  JSON for Red objects
     if red_objects_details_unsorted:
         json_output["RedObject"]["IsRed"] = True
         json_output["RedObject"]["RedCounter"] = len(red_objects_details_unsorted)
-        json_output["RedObject"]["RedDis"] = round(sum(red_distances_list) / len(red_distances_list), 2)
-        
-        # Populate RedAxis with sorted individual object data
+        json_output["RedObject"]["RedDis"] = round(
+            sum(red_distances_list) / len(red_distances_list), 2
+        )
+
         for i, obj_data in enumerate(red_objects_details_unsorted):
             json_output["RedObject"]["RedAxis"][str(i + 1)] = obj_data
 
-
-    # 2. Detect Blue objects
+    # Detect Blue objects
     blue_mask = cv2.inRange(hsv, BLUE_LOWER, BLUE_UPPER)
 
     contours_blue, _ = cv2.findContours(
@@ -225,26 +254,33 @@ while True:
     for contour_idx, contour in enumerate(contours_blue):
         area = cv2.contourArea(contour)
         if area > MIN_OBJECT_AREA:
-            x, y, w, h = cv2.boundingRect(contour) # Get bounding box coordinates
+            x, y, w, h = cv2.boundingRect(contour)  # Get bounding box coordinates
 
             if w == 0:
                 continue
 
-            distance = estimate_distance(w) # Use 'w' (perceived width) for distance
-            
+            distance = estimate_distance(w)  # Use 'w' for distance
+
             center_x = x + w // 2
             center_y = y + h // 2
 
-            # Store individual object details
-            blue_objects_details_unsorted.append({
+            # Calculate safe zone
+            obj_safe_dis, obj_sa_dir = get_safe_zone_guidance(center_x)
+
+            obj_data = {
                 "X": center_x,
                 "Y": center_y,
-                "Dis": distance
-            })
-            blue_distances_list.append(distance) # For calculating overall average
+                "Dis": distance,
+                "SafeDis": obj_safe_dis,  
+                "SaDir": obj_sa_dir,  
+            }
+            blue_objects_details_unsorted.append(obj_data)
+            blue_distances_list.append(distance)  
 
             # Draw box and text on the detection frame
-            cv2.rectangle(detection_frame, (x, y), (x + w, y + h), (255, 0, 0), 2) # Blue box
+            cv2.rectangle(
+                detection_frame, (x, y), (x + w, y + h), (255, 0, 0), 2
+            )  # Blue box
             cv2.putText(
                 detection_frame,
                 f"Blue {distance:.2f}cm",
@@ -256,7 +292,7 @@ while True:
             )
             cv2.putText(
                 detection_frame,
-                f"ID {contour_idx+1} ({center_x},{center_y})", # ID based on detection order
+                f"ID {contour_idx+1} ({center_x},{center_y}) [{obj_sa_dir}]",  # Show direction
                 (x, y + h + 20),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
@@ -264,21 +300,60 @@ while True:
                 1,
             )
 
-    # --- Sort Blue objects by distance (closest first) ---
-    blue_objects_details_unsorted.sort(key=lambda obj: obj['Dis'])
+    # --- Sort Blue objects by distance ---
+    blue_objects_details_unsorted.sort(key=lambda obj: obj["Dis"])
 
-    # Populate JSON for Blue objects
+    # JSON for Blue objects
     if blue_objects_details_unsorted:
         json_output["BlueObject"]["IsBlue"] = True
         json_output["BlueObject"]["BlueCounter"] = len(blue_objects_details_unsorted)
-        json_output["BlueObject"]["BlueDis"] = round(sum(blue_distances_list) / len(blue_distances_list), 2)
-        
-        # Populate BlueAxis with sorted individual object data
+        json_output["BlueObject"]["BlueDis"] = round(
+            sum(blue_distances_list) / len(blue_distances_list), 2
+        )
+
         for i, obj_data in enumerate(blue_objects_details_unsorted):
             json_output["BlueObject"]["BlueAxis"][str(i + 1)] = obj_data
 
+    # --- Draw Safe Zone ---
+    cv2.line(
+        detection_frame,
+        (SAFE_ZONE_LEFT_EDGE_X, 0),
+        (SAFE_ZONE_LEFT_EDGE_X, FRAME_HEIGHT),
+        SAFE_ZONE_LINE_COLOR,
+        SAFE_ZONE_LINE_THICKNESS,
+    )
+    cv2.line(
+        detection_frame,
+        (SAFE_ZONE_RIGHT_EDGE_X, 0),
+        (SAFE_ZONE_RIGHT_EDGE_X, FRAME_HEIGHT),
+        SAFE_ZONE_LINE_COLOR,
+        SAFE_ZONE_LINE_THICKNESS,
+    )
+    # Add text label for safe zone
+    cv2.putText(
+        detection_frame,
+        "Safe Zone",
+        (SAFE_ZONE_LEFT_EDGE_X + 5, 20),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        SAFE_ZONE_LINE_COLOR,
+        2,
+    )
+    # Draw safe zone center 
+    cv2.circle(
+        detection_frame, (SAFE_ZONE_CENTER_X, FRAME_HEIGHT // 2), 5, (255, 0, 255), -1
+    ) 
+    cv2.putText(
+        detection_frame,
+        "SZ Cntr",
+        (SAFE_ZONE_CENTER_X + 10, FRAME_HEIGHT // 2 + 20),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        (255, 0, 255),
+        1,
+    )
 
-    # --- Print JSON output to terminal ---
+    # --- Print JSON to terminal ---
     print(json.dumps(json_output, indent=4))
 
     # --- Display Frames ---
@@ -287,7 +362,7 @@ while True:
     cv2.imshow("General Result", result_general)
     cv2.imshow(
         "Red/Blue Detection", detection_frame
-    )  # Display the frame with red/blue boxes
+    )  # Display the frame with red/blue boxes and safe zone
 
     # --- Frame Rate Control and GUI Event Processing ---
     processing_time_ms = (time.time() - current_loop_start_time) * 1000

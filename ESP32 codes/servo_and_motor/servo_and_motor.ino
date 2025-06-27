@@ -26,13 +26,12 @@ void setup() {
   pinMode(IN2_PIN, OUTPUT);
 
   // === Setup LEDC PWM for motor speed control ===
-  // ledcSetup(MOTOR_PWM_CHANNEL, MOTOR_PWM_FREQ, MOTOR_PWM_RES);
-  ledcAttach(EN_PIN, MOTOR_PWM_CHANNEL, MOTOR_PWM_RES);
+  ledcSetup(MOTOR_PWM_CHANNEL, MOTOR_PWM_FREQ, MOTOR_PWM_RES);
+  ledcAttachPin(EN_PIN, MOTOR_PWM_CHANNEL);
 
   // === Servo Setup ===
-  ESP32PWM::allocateTimer(0);  // Required on ESP32
-  steeringServo.setPeriodHertz(50);  // 50 Hz PWM for servo
-  steeringServo.attach(SERVO_PIN, SERVO_MIN_PULSE, SERVO_MAX_PULSE);
+ 
+  steeringServo.attach(SERVO_PIN);
 
   Serial.println("Send: <motor_state> <servo_angle>");
   Serial.println("Example: 1 90  → Motor ON, servo to 90°");
