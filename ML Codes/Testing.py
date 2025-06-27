@@ -1,0 +1,305 @@
+import time
+import numpy as np
+import cv2
+import json
+
+# --- Configuration ---
+CAMERA_INDEX = 0  # Select which cam will be used
+FRAME_WIDTH = 640
+FRAME_HEIGHT = 480
+TARGET_FPS = 30.0  # Cam FPS
+MIN_WAIT_TIME_MS = 5  # Minimum wait time to ensure GUI responsiveness (e.g., 5ms)
+MIN_OBJECT_AREA = 500  # Minimum contour area to consider an object (adjust as needed)
+
+# Object dimensions and camera focal length for distance estimation (in cm and px)
+KNOWN_WIDTH_CM = 5.0  # Object's physical width (e.g., the 5cm side)
+FOCAL_LENGTH_PX = 875.0  # Focal length of your camera in pixels (CALIBRATE THIS)
+
+
+# --- Define HSV ranges for Red and Blue (These are crucial and need tuning!) ---
+# Red color mask (example values, TUNE THESE WITH THE GENERAL TRACKBARS)
+RED_LOWER_1 = np.array([0, 120, 70])
+RED_UPPER_1 = np.array([10, 255, 255])
+RED_LOWER_2 = np.array([170, 120, 70])
+RED_UPPER_2 = np.array([180, 255, 255])
+
+# Blue color range (example values, TUNE THESE WITH THE GENERAL TRACKBARS)
+BLUE_LOWER = np.array([100, 150, 50])
+BLUE_UPPER = np.array([140, 255, 255])
+
+
+# --- Initialize webcam ---
+cap = cv2.VideoCapture(CAMERA_INDEX)
+
+if not cap.isOpened():
+    print(f"Error: Could not open video stream from camera index {CAMERA_INDEX}.")
+    print(
+        "Please check if the camera is connected and not in use by another application."
+    )
+    exit()
+
+# Set camera resolution
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
+
+
+def nothing(x):
+    pass
+
+
+# --- Create General Trackbar Window
+cv2.namedWindow("General HSV Trackbars", cv2.WINDOW_NORMAL)
+cv2.resizeWindow("General HSV Trackbars", 600, 300)
+
+# IMPORTANT: Give the window time to render BEFORE creating trackbars
+cv2.waitKey(100)  # Wait 100ms for the window to draw
+
+try:
+    cv2.moveWindow("General HSV Trackbars", 10, 10)  # Move to top-left corner
+    cv2.moveWindow("Original Frame", FRAME_WIDTH + 30, 10)  # Position original frame
+    cv2.moveWindow("General Mask", 10, 400)  # Position mask below trackbars
+    cv2.moveWindow(
+        "General Result", FRAME_WIDTH + 30, 400
+    )  # Position result next to mask
+    cv2.moveWindow(
+        "Red/Blue Detection", (FRAME_WIDTH * 2) + 50, 10
+    )  # New window for Red/Blue boxes
+except cv2.error as e:
+    print(f"Could not move window. Error: {e}")
+
+# Create trackbars for general HSV lower and upper bounds
+cv2.createTrackbar("L - H", "General HSV Trackbars", 0, 179, nothing)
+cv2.createTrackbar("L - S", "General HSV Trackbars", 0, 255, nothing)
+cv2.createTrackbar("L - V", "General HSV Trackbars", 0, 255, nothing)
+cv2.createTrackbar("U - H", "General HSV Trackbars", 179, 179, nothing)
+cv2.createTrackbar("U - S", "General HSV Trackbars", 255, 255, nothing)
+cv2.createTrackbar("U - V", "General HSV Trackbars", 255, 255, nothing)
+
+
+def estimate_distance(perceived_dimension_px):
+    """Estimates distance to an object given its perceived dimension in pixels.
+    Uses KNOWN_WIDTH_CM and FOCAL_LENGTH_PX from global config."""
+    if perceived_dimension_px == 0:
+        return 0.0
+    return round((KNOWN_WIDTH_CM * FOCAL_LENGTH_PX) / perceived_dimension_px, 2)
+
+
+# --- Frame rate control variables ---
+frame_delay_target_ms = int(1000 / TARGET_FPS)
+
+# --- Video Processing Loop ---
+while True:
+    current_loop_start_time = time.time()
+
+    ret, frame = cap.read()
+    if not ret:
+        print("Error: Failed to grab frame. Exiting...")
+        break
+
+    # Flip horizontally (most common for "mirror" effect)
+    frame = cv2.flip(frame, 1)
+
+    # Resize frame for consistent processing and display
+    frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
+
+    # Create a copy of the frame to draw detection boxes on
+    detection_frame = frame.copy()
+
+    # Convert to HSV color space for color filtering
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+    # --- Get Trackbar Positions for general HSV tuning ---
+    l_h = cv2.getTrackbarPos("L - H", "General HSV Trackbars")
+    l_s = cv2.getTrackbarPos("L - S", "General HSV Trackbars")
+    l_v = cv2.getTrackbarPos("L - V", "General HSV Trackbars")
+    u_h = cv2.getTrackbarPos("U - H", "General HSV Trackbars")
+    u_s = cv2.getTrackbarPos("U - S", "General HSV Trackbars")
+    u_v = cv2.getTrackbarPos("U - V", "General HSV Trackbars")
+
+    # Define bounds for the general trackbar mask
+    lower_bound_general = np.array([l_h, l_s, l_v])
+    upper_bound_general = np.array([u_h, u_s, u_v])
+
+    # Create mask and result for the general trackbar window
+    mask_general = cv2.inRange(hsv, lower_bound_general, upper_bound_general)
+    result_general = cv2.bitwise_and(frame, frame, mask=mask_general)
+
+    # --- Specific Red and Blue Object Detection for JSON output ---
+
+    # Initialize JSON output for this frame, ready for multiple objects
+    json_output = {
+        "RedObject": {
+            "IsRed": False,
+            "RedCounter": 0,
+            "RedDis": 0.0, # This will be the average distance of all red objects
+            "RedAxis": {} # This will store individual red objects: {"1": {...}, "2": {...}}
+        },
+        "BlueObject": {
+            "IsBlue": False,
+            "BlueCounter": 0,
+            "BlueDis": 0.0, # This will be the average distance of all blue objects
+            "BlueAxis": {} # This will store individual blue objects
+        }
+    }
+
+    # Lists to temporarily store data for calculating averages and populating JSON
+    red_distances_list = []
+    blue_distances_list = []
+    red_objects_details_unsorted = [] # Store details before sorting
+    blue_objects_details_unsorted = [] # Store details before sorting
+
+
+    # 1. Detect Red objects
+    red_mask1 = cv2.inRange(hsv, RED_LOWER_1, RED_UPPER_1)
+    red_mask2 = cv2.inRange(hsv, RED_LOWER_2, RED_UPPER_2)
+    red_mask_combined = cv2.bitwise_or(red_mask1, red_mask2)
+
+    contours_red, _ = cv2.findContours(
+        red_mask_combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    for contour_idx, contour in enumerate(contours_red):
+        area = cv2.contourArea(contour)
+        if area > MIN_OBJECT_AREA:
+            x, y, w, h = cv2.boundingRect(contour) # Get bounding box coordinates
+            
+            if w == 0: # Ensure width is not zero to prevent division by zero
+                continue
+
+            distance = estimate_distance(w) # Use 'w' (perceived width) for distance
+
+            center_x = x + w // 2
+            center_y = y + h // 2
+
+            # Store individual object details
+            red_objects_details_unsorted.append({
+                "X": center_x,
+                "Y": center_y,
+                "Dis": distance
+            })
+            red_distances_list.append(distance) # For calculating overall average
+
+            # Draw box and text on the detection frame (drawing will be based on unsorted order)
+            # The IDs here will match the order of detection, not necessarily distance
+            cv2.rectangle(detection_frame, (x, y), (x + w, y + h), (0, 0, 255), 2) # Red box
+            cv2.putText(
+                detection_frame,
+                f"Red {distance:.2f}cm",
+                (x, y - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 0, 255),
+                2,
+            )
+            cv2.putText(
+                detection_frame,
+                f"ID {contour_idx+1} ({center_x},{center_y})", # ID based on detection order
+                (x, y + h + 20),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 0, 255),
+                1,
+            )
+
+    # --- Sort Red objects by distance (closest first) ---
+    red_objects_details_unsorted.sort(key=lambda obj: obj['Dis'])
+
+    # Populate JSON for Red objects
+    if red_objects_details_unsorted:
+        json_output["RedObject"]["IsRed"] = True
+        json_output["RedObject"]["RedCounter"] = len(red_objects_details_unsorted)
+        json_output["RedObject"]["RedDis"] = round(sum(red_distances_list) / len(red_distances_list), 2)
+        
+        # Populate RedAxis with sorted individual object data
+        for i, obj_data in enumerate(red_objects_details_unsorted):
+            json_output["RedObject"]["RedAxis"][str(i + 1)] = obj_data
+
+
+    # 2. Detect Blue objects
+    blue_mask = cv2.inRange(hsv, BLUE_LOWER, BLUE_UPPER)
+
+    contours_blue, _ = cv2.findContours(
+        blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    for contour_idx, contour in enumerate(contours_blue):
+        area = cv2.contourArea(contour)
+        if area > MIN_OBJECT_AREA:
+            x, y, w, h = cv2.boundingRect(contour) # Get bounding box coordinates
+
+            if w == 0:
+                continue
+
+            distance = estimate_distance(w) # Use 'w' (perceived width) for distance
+            
+            center_x = x + w // 2
+            center_y = y + h // 2
+
+            # Store individual object details
+            blue_objects_details_unsorted.append({
+                "X": center_x,
+                "Y": center_y,
+                "Dis": distance
+            })
+            blue_distances_list.append(distance) # For calculating overall average
+
+            # Draw box and text on the detection frame
+            cv2.rectangle(detection_frame, (x, y), (x + w, y + h), (255, 0, 0), 2) # Blue box
+            cv2.putText(
+                detection_frame,
+                f"Blue {distance:.2f}cm",
+                (x, y - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255, 0, 0),
+                2,
+            )
+            cv2.putText(
+                detection_frame,
+                f"ID {contour_idx+1} ({center_x},{center_y})", # ID based on detection order
+                (x, y + h + 20),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (255, 0, 0),
+                1,
+            )
+
+    # --- Sort Blue objects by distance (closest first) ---
+    blue_objects_details_unsorted.sort(key=lambda obj: obj['Dis'])
+
+    # Populate JSON for Blue objects
+    if blue_objects_details_unsorted:
+        json_output["BlueObject"]["IsBlue"] = True
+        json_output["BlueObject"]["BlueCounter"] = len(blue_objects_details_unsorted)
+        json_output["BlueObject"]["BlueDis"] = round(sum(blue_distances_list) / len(blue_distances_list), 2)
+        
+        # Populate BlueAxis with sorted individual object data
+        for i, obj_data in enumerate(blue_objects_details_unsorted):
+            json_output["BlueObject"]["BlueAxis"][str(i + 1)] = obj_data
+
+
+    # --- Print JSON output to terminal ---
+    print(json.dumps(json_output, indent=4))
+
+    # --- Display Frames ---
+    cv2.imshow("Original Frame", frame)
+    cv2.imshow("General Mask", mask_general)
+    cv2.imshow("General Result", result_general)
+    cv2.imshow(
+        "Red/Blue Detection", detection_frame
+    )  # Display the frame with red/blue boxes
+
+    # --- Frame Rate Control and GUI Event Processing ---
+    processing_time_ms = (time.time() - current_loop_start_time) * 1000
+    wait_time_ms = max(
+        MIN_WAIT_TIME_MS, int(frame_delay_target_ms - processing_time_ms)
+    )
+    key = cv2.waitKey(wait_time_ms) & 0xFF
+
+    if key == ord("q"):
+        print("Exiting program.")
+        break
+
+# --- Closing ---
+cap.release()
+cv2.destroyAllWindows()
