@@ -4,7 +4,7 @@ import json
 
 # Object size and camera focal length (in cm and px)
 KNOWN_WIDTH_CM = 10.0
-ASPECT_RATIO = 2.0
+ASPECT_RATIO = 2.0 # = Length of object / Width of object
 FOCAL_LENGTH = 700.0
 
 def detect_color(hsv, mask):
