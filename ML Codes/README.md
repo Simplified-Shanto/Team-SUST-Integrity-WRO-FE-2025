@@ -82,7 +82,7 @@ So you're not using the aspect ratio **in the distance formula**, but rather as 
 * Use:
 
 $$
-\text{FOCAL_LENGTH} = \frac{35 \times 50}{10} = 175.0
+\text{FOCAL LENGTH} = \frac{35 \times 50}{10} = 175.0
 $$
 
 So your `700.0` might assume a different scale or higher-resolution camera — feel free to recalibrate!
