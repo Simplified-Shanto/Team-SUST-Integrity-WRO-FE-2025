@@ -1,4 +1,4 @@
-#Distance calculation logic
+Distance calculation logic
 ---
 
 ### 🔍 **Core Formula Used**
@@ -89,12 +89,10 @@ So your `700.0` might assume a different scale or higher-resolution camera — f
 
 ---
 
-### 🛣️ TL;DR Summary
+###  Summary:
 
 * ✅ **Aspect ratio**: used as a filter to ensure you’re detecting the right-shaped object (around 2:1 like your columns).
 * ✅ **Focal length**: used to convert image width in pixels into a real-world distance in centimeters.
 * ✅ **Distance logic**: classic pinhole camera projection formula, ideal when you know the real object size (which WRO gives you 😎).
 
 ---
-
-If you're planning to make it **more robust** or simulate it in Gazebo or RViz later, we can even walk through calibration and distortion handling next. Let me know!
