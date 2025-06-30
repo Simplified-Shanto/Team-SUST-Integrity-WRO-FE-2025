@@ -65,7 +65,7 @@ So you're not using the aspect ratio **in the distance formula**, but rather as 
 
 ### 📸 About Focal Length: How Is `700` Chosen?
 
-* The value `700.0` is not universal — it’s typically:
+The value `700.0` is not universal — it’s typically:
 
   * **Estimated experimentally**, by measuring an object of known width at a known distance and solving:
 
