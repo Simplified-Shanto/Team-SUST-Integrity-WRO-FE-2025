@@ -32,7 +32,7 @@ struct MenuValue {
 };
 
 MenuValue menuValues[] = {
-  { "Kp", 0.50, true }, { "Kd", 1.20, true }, { "Ki", 0.00, true }, { "Wall Sid", 0, false }, { "Wall Dis", 12, false }, { "White Surf", 1450, false }, { "Blue Line", 1150, false }, { "Yellow Line", 1250, false }, { "Servo Min", 0, false }, { "Servo Mid", 90, false }, { "Servo Max", 180, false }
+  { "Kp", 0.50, true }, { "Kd", 1.20, true }, { "Ki", 0.00, true }, { "Game Round", 0, false }, { "Wall Sid", 0, false }, { "Wall Dis", 12, false }, { "White Surf", 1450, false }, { "Blue Line", 1150, false }, { "Yellow Line", 1250, false }, { "Servo Min", 0, false }, { "Servo Mid", 90, false }, { "Servo Max", 180, false }
 };
 const int valueCount = sizeof(menuValues) / sizeof(menuValues[0]);
 
@@ -53,7 +53,7 @@ int sensorTopItem = 0;
 String serialValStr = "";
 
 const char* menuItems[] = {
-  "Kp", "Kd", "Ki", "Wall Sid", "Wall Dis",
+  "Kp", "Kd", "Ki", "Game Round", "Wall Sid", "Wall Dis",
   "White Surf", "Blue Line", "Yellow Line", "Servo Min", "Servo Mid", "Servo Max",
   "Calibrate", "Sensor Test", "Run Test", "Motor Test", "Reset"
 };
@@ -71,7 +71,7 @@ unsigned long lastGameDown = 0;
 bool menuWaitingForSecondClick = false;
 
 // Store default values for reset
-float defaultMenuValues[] = {0.50, 1.20, 0.00, 0, 12, 1450, 1150, 1250, 0, 90, 180};
+float defaultMenuValues[] = {0.50, 1.20, 0.00, 0, 0, 12, 1450, 1150, 1250, 0, 90, 180};
 
 void setup() {
   pinMode(MENU_BUTTON, INPUT_PULLUP);
