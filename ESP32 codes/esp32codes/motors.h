@@ -9,7 +9,7 @@ int forwardSpeed = 120; // Out of 255
 
 void goForward(int speed)
 {
-    digitalWrite(in1Pin, HIGH);
-    digitalWrite(in2Pin, LOW);
+    digitalWrite(in1Pin, LOW);
+    digitalWrite(in2Pin, HIGH);
     ledcWrite(LEDC_CHANNEL, speed);
 }
