@@ -13,14 +13,14 @@ MenuValue menuValues[] = {
 
 SensorData sensorValues[] = {
   { "L Sonar", 10 }, { "R Sonar", 11 }, { "F Sonar", 9 }, { "B Sonar", 13 },
-  { "IR", 1 }, { "Red L Counter", 0 }, { "Yellow L Counter", 0 }, { "Total L Counter", 0 },
+  { "IR", 1 }, { "Red L Counter", 0 }, { "Yellow L Counter", 0 }, { "Total L Counter", 0 }, {"Bot Status", 0},
   { "Serial val", 255 }
 };
 
 const char* menuItems[] = {
   "Kp", "Kd", "Ki", "Game Round", "Wall Sid", "Wall Dis",
   "White Surf", "Blue Line", "Yellow Line", "Servo Min", "Servo Mid", "Servo Max",
-  "Calibrate", "Sensor Test", "Run Test", "Motor Test", "Reset"
+  "Calibrate", "Sensor Test", "Run Test", "Motor Test", "Servo Test", "Reset"
 };
 
 float defaultMenuValues[] = { 0.50, 1.20, 0.00, 0, 0, 12, 1450, 1150, 1250, 0, 90, 180 };
