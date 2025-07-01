@@ -16,7 +16,7 @@ int wallDistance = 15;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  preferences.begin("wrobot", false);
+  preferences.begin("wrobot", false); // readOnly = false
   Kp = preferences.getDouble("Kp", 0);
   Kd = preferences.getDouble("Kd", 0);
   debugPrint = preferences.getInt("dP", 0);  //dP = debugPrint
@@ -32,13 +32,13 @@ void setup() {
   steering_servo.setPeriodHertz(50);                     // standard 50 hz servo
   steering_servo.attach(steering_servo_pin, 500, 2400);  // attaches the servo on pin 18 to the servo object
   steering_servo.write(midAngle);
-  delay(1000); 
-  steering_servo.write(rightAngle);
-  delay(1000); 
-  steering_servo.write(midAngle);
-  delay(1000); 
-  steering_servo.write(leftAngle);
-  delay(1000); 
+  // delay(1000); 
+  // steering_servo.write(rightAngle);
+  // delay(1000); 
+  // steering_servo.write(midAngle);
+  // delay(1000); 
+  // steering_servo.write(leftAngle);
+  // delay(1000); 
   
 
   ledcSetup(LEDC_CHANNEL, 1000, 8);     // Set LEDC channel, frequency, and resolution
@@ -61,13 +61,13 @@ int setPoint = 0;  //Setpoint for the difference between the readings of the lef
 
 void loop() {
   checkButton();
-  if (!gameStarted) return;
+  if (!gameStarted) return; //simply skipping the rest of the loop() for this iteration.
 
   int frontDistance = middleSonar.ping_cm();
   int leftDistance = leftSonar.ping_cm();
   int rightDistance = rightSonar.ping_cm();
 
-  // Fail-safe values if echo fails
+  // Fail-safe values if echo fails or the distance infront is greater than the preset value in newPing()
   if (leftDistance == 0) leftDistance = 100;
   if (rightDistance == 0) rightDistance = 100;
   if (frontDistance == 0) frontDistance = 100;
