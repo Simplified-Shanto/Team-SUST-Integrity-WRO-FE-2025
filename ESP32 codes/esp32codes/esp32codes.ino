@@ -10,6 +10,10 @@ double Kp = 0;
 double Kd = 0;
 int debugPrint = 0;  //Whether we want to print all the variables to the OLED display.
 
+int target_total_lines = 24;
+bool stopped = false;  // Add a flag to mark stopped state
+
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
@@ -21,22 +25,22 @@ void setup() {
 
   pinMode(ledPin, OUTPUT);
   pinMode(buttonPin, INPUT_PULLUP);
-  pinMode(button2Pin, INPUT_PULLUP); 
-  pinMode(buzzerPin, OUTPUT); 
-  digitalWrite(buzzerPin, LOW); 
+  pinMode(button2Pin, INPUT_PULLUP);
+  pinMode(buzzerPin, OUTPUT);
+  digitalWrite(buzzerPin, LOW);
 
   ESP32PWM::allocateTimer(0);
   steering_servo.setPeriodHertz(50);                     // standard 50 hz servo
   steering_servo.attach(steering_servo_pin, 500, 2400);  // attaches the servo on pin 18 to the servo object
   steering_servo.write(midAngle);
-  delay(1000); 
+  delay(1000);
   steering_servo.write(rightAngle);
-  delay(1000); 
+  delay(1000);
   steering_servo.write(midAngle);
-  delay(1000); 
+  delay(1000);
   steering_servo.write(leftAngle);
-  delay(1000); 
-  
+  delay(1000);
+
 
   ledcSetup(LEDC_CHANNEL, 1000, 8);     // Set LEDC channel, frequency, and resolution
   ledcAttachPin(pwmPin, LEDC_CHANNEL);  // Attach the GPIO pin to the LEDC channel
@@ -56,95 +60,111 @@ double lastError = 0;
 
 int setPoint = 0;  //Setpoint for the difference between the readings of the left and right sonar.
 
+
 void loop() {
-  if (Serial.available()) {
-    String command = Serial.readStringUntil(';');
+  static String serialBuffer = "";
+  static int blueLines = 0;
+  static int orangeLines = 0;
+  static int totalLines = 0;
+  char incoming;
 
-    char constant_name = command[0];  //The type of action the remote wants us to take.
-    String constant_value_string = command.substring(2, command.length());
-    // Serial.print("constant_value_string = ");
-    // Serial.println(constant_value_string);
-    float constant_value = constant_value_string.toFloat();
-    // Serial.print("constant value = ");
-    // Serial.println(constant_value); //Though there are more decimal places in the variable,
-    //                                 // the print function only prints upto two decimal places
-    if (command == "x") {  // Commands the car to stop
-
-      gameStarted = 0;
-      goForward(0);
-      steering_servo.write(midAngle);
-    } else if (command == "y") {
-      gameStarted = 1;
-      goForward(forwardSpeed);
+  while (Serial.available()) {  // Read all available chars immediately
+    incoming = Serial.read();
+    if (incoming != '\n') {
+      serialBuffer += incoming;
     } else {
-      switch (constant_name) {
-        case 'p':  //Proportional of PID
-          Kp = constant_value;
-          preferences.putDouble("Kp", Kp);
-          break;
-        case 'd':  //Derivative of PID
-          Kd = constant_value;
-          preferences.putDouble("Kd", Kd);
-          break;
-        case 's':  //Speed of vehicle
-          forwardSpeed = int(constant_value);
-          preferences.putInt("speed", forwardSpeed);
-          break;
-        case 'D':  //Debug print flag
-          debugPrint = int(constant_value);
-          preferences.putInt("dP", debugPrint);
-          display.clearDisplay();
-          display.display();
-          // delay(2000);
-        default:
-          break;
+      // Full line received
+      Serial.print("Received: ");
+      Serial.println(serialBuffer);
+
+      int blueIndex = serialBuffer.indexOf("\"BlueLinesPassed\":");
+      int orangeIndex = serialBuffer.indexOf("\"OrangeLinesPassed\":");
+      int totalIndex = serialBuffer.indexOf("\"TotalLinesPassed\":");
+
+      if (blueIndex != -1 && orangeIndex != -1 && totalIndex != -1) {
+        int blueEnd = serialBuffer.indexOf(",", blueIndex);
+        int orangeEnd = serialBuffer.indexOf(",", orangeIndex);
+        int totalEnd = serialBuffer.indexOf("}", totalIndex);
+
+        int blueColon = serialBuffer.indexOf(":", blueIndex);
+        int orangeColon = serialBuffer.indexOf(":", orangeIndex);
+        int totalColon = serialBuffer.indexOf(":", totalIndex);
+
+        String blueStr = serialBuffer.substring(blueColon + 1, blueEnd);
+        String orangeStr = serialBuffer.substring(orangeColon + 1, orangeEnd);
+        String totalStr = serialBuffer.substring(totalColon + 1, totalEnd);
+
+        blueStr.trim();
+        orangeStr.trim();
+        totalStr.trim();
+
+        blueLines = blueStr.toInt();
+        orangeLines = orangeStr.toInt();
+        totalLines = totalStr.toInt();
+
+        if (totalLines >= target_total_lines && !stopped) {
+          stopped = true;  // Set stopped flag
+          goForward(0);    // Stop the motor immediately
+          steering_servo.write(midAngle);
+          Serial.println("Stopped immediately due to totalLines reached.");
+        }
       }
-      preferences.end();  // Saves variables to EEPROM
+      serialBuffer = "";
     }
   }
+
   checkButton();
+
+  // If stopped, skip motor control
+  if (stopped) {
+    // Just update display if debugPrint enabled
+    if (debugPrint == 1) {
+      display.clearDisplay();
+      display.setCursor(0, 0);
+      display.print("Stopped!");
+      display.print(" Blue: ");
+      display.println(blueLines);
+      display.print(" Orange: ");
+      display.println(orangeLines);
+      display.print(" Total: ");
+      display.println(totalLines);
+      display.display();
+    }
+    return;  // skip rest of the loop
+  }
 
   int frontDistance = middleSonar.ping_cm();
   int leftDistance = leftSonar.ping_cm();
   int rightDistance = rightSonar.ping_cm();
-  int backDistance = backSonar.ping_cm(); 
+  int backDistance = backSonar.ping_cm();
 
-  if (leftDistance == 0) {
-    leftDistance = 100;
-  } else if (rightDistance == 0) {
-    rightDistance = 100;
-  }
+  if (leftDistance == 0) leftDistance = 100;
+  if (rightDistance == 0) rightDistance = 100;
 
   value = leftDistance - rightDistance;
   error = value - setpoint;
-  // int frontConstant = 40;
-  //  double frontProportion = 1;
-  // double multiplier = (frontConstant - frontDistance) * (frontDistance < 20) * frontProportion;
-  //   if (multiplier == 0) { multiplier = 1; }
   double PIDangle = error * Kp + (error - lastError) * Kd;
   lastError = error;
 
   if (debugPrint == 1) {
     display.clearDisplay();
     display.setCursor(0, 0);
-    display.print(middleSonar.ping_cm());
-    display.print(" ");
-    display.print(rightSonar.ping_cm());
-    display.print(" ");
-    display.print(leftSonar.ping_cm());
-    display.print(" ");
-    display.print(backSonar.ping_cm());
-    display.print(" ");
-    display.print(analogRead(IRpin));
-    display.println();
-    // display.setCursor(0, 30);
+    display.print("Blue: ");
+    display.println(blueLines);
+    display.print("Orange: ");
+    display.println(orangeLines);
+    display.print("Total: ");
+    display.println(totalLines);
+    display.print("data: ");
+    display.println(incoming);
+
     display.print("ang = ");
     display.println(int(PIDangle));
-    display.print("Kp:");
+    display.print("Kp: ");
     display.println(Kp);
-    display.print("Kd:");
+    display.print("Kd: ");
     display.println(Kd);
-    display.print("speed = ");
+    display.print("speed: ");
     display.println(forwardSpeed);
     display.display();
   }
