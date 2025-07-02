@@ -9,5 +9,5 @@ Servo steering_servo;
 
 #define rightAngle 0
 #define midAngle 90
-#define leftAngle 170
-double halfAngleRange = 45;
+#define leftAngle 180
+double halfAngleRange = 90;

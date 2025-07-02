@@ -34,13 +34,7 @@ void setup() {
   steering_servo.attach(steering_servo_pin, 500, 2400);  // attaches the servo on pin 18 to the servo object
   steering_servo.write(midAngle);
   delay(1000);
-  steering_servo.write(rightAngle);
-  delay(1000);
-  steering_servo.write(midAngle);
-  delay(1000);
-  steering_servo.write(leftAngle);
-  delay(1000);
-
+ 
 
   ledcSetup(LEDC_CHANNEL, 1000, 8);     // Set LEDC channel, frequency, and resolution
   ledcAttachPin(pwmPin, LEDC_CHANNEL);  // Attach the GPIO pin to the LEDC channel
@@ -146,7 +140,19 @@ void loop() {
   double PIDangle = error * Kp + (error - lastError) * Kd;
   lastError = error;
 
-  if (debugPrint == 1) {
+
+  if (gameStarted == 1) {
+    int steer_angle = midAngle;
+    if (PIDangle > 0) {
+      steer_angle = midAngle + min(halfAngleRange, PIDangle);
+    } else {
+      steer_angle = midAngle - min(halfAngleRange, abs(PIDangle));
+    }
+    steering_servo.write(steer_angle);
+  }
+
+
+    if (debugPrint == 1) {
     display.clearDisplay();
     display.setCursor(0, 0);
     display.print("Blue: ");
@@ -169,13 +175,4 @@ void loop() {
     display.display();
   }
 
-  if (gameStarted == 1) {
-    int steer_angle = midAngle;
-    if (PIDangle > 0) {
-      steer_angle = midAngle + min(halfAngleRange, PIDangle);
-    } else {
-      steer_angle = midAngle - min(halfAngleRange, abs(PIDangle));
-    }
-    steering_servo.write(steer_angle);
-  }
 }
