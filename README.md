@@ -73,8 +73,8 @@ To keep everything organized and transparent, we structured this GitHub repo wit
 ---
 >[!IMPORTANT]
 >**Important: WRO Future Engineers Rulebook**
->* **Thorough Reading:** Ensure that you thoroughly read the **WRO Future Engineers 2024 Rulebook** to understand all rules and guidelines.
->* **Official Link:** Access the rulebook here: [🔗 WRO Future Engineers 2024 Rulebook](https://wro-association.org/competitions/future-engineers/).
+>* **Thorough Reading:** Ensure that you thoroughly read the **WRO Future Engineers 2025 Rulebook** to understand all rules and guidelines.
+>* **Official Link:** Access the rulebook here: [🔗 WRO Future Engineers 2025 Rulebook]([https://wro-association.org/competitions/future-engineers/](https://wro-association.org/wp-content/uploads/WRO-2024-Future-Engineers-Self-Driving-Cars-General-Rules.pdf).
 
 ---
 
@@ -135,7 +135,7 @@ To simplify the design and enhance control, we transitioned to a **Rack and Pini
 
 ## 🛠️ Chassis & Assembly Notes
 
-- **Material**: Custom acrylic base + LEGO Technic frame
+- **Material**: Custom 3D printed base + LEGO Technic frame
 - **Design Tools**: Autodesk Fusion 360 (for custom parts like sonar mounts, motor brackets)
 - **Mounting Strategy**:
   - Front: Rack and pinion + servo motor
