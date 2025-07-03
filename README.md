@@ -91,6 +91,28 @@ To keep everything organized and transparent, we structured this GitHub repo wit
 
 We built this robot and documentation not just for a competition, but to share, inspire, and collaborate. If you’re here to learn, contribute, or replicate — welcome to the constant.
 
+# 🧩 Hardware Components
+
+Below is the list of core hardware components used in building our robot for the WRO Future Engineers challenge.
+
+| Component                          | Quantity | Image |
+|------------------------------------|----------|-------|
+| **Raspberry Pi 4B**                | 1x       | ![Raspberry Pi 4B](https://upload.wikimedia.org/wikipedia/commons/3/3f/Raspberry_Pi_4_Model_B_-_Side.jpg) |
+| **ESP32 Dev Board**               | 1x       | ![ESP32 Dev Board](https://upload.wikimedia.org/wikipedia/commons/9/9b/ESP32_DevKit_v1.jpg) |
+| **HC-SR04 Ultrasonic Sensor**     | 4x       | ![HC-SR04](https://upload.wikimedia.org/wikipedia/commons/3/3b/HCSR04_Ultrasonic_Sensor.jpg) |
+| **Raspberry Pi Camera Module**     | 1x       | ![Pi Camera](https://upload.wikimedia.org/wikipedia/commons/8/85/Raspberry_Pi_Camera_Module_2.jpg) |
+| **L298N Motor Driver Module**      | 1x       | ![L298N](https://upload.wikimedia.org/wikipedia/commons/f/f0/L298n_motor_driver_module.jpg) |
+| **XL4016 Buck Converter**          | 1x       | ![XL4016](https://www.electrodragon.com/wp-content/uploads/2016/01/XL4016-Dual-Adjustable-DC-DC-Step-Down-Module.jpg) |
+| **XL6009 Boost Converter**         | 1x       | ![XL6009](https://www.electronicwings.com/public/images/user_images/images/XL6009%20Boost%20Module.png) |
+| **MG90S Micro Servo Motor**        | 1x       | ![MG90S](https://upload.wikimedia.org/wikipedia/commons/4/4f/TowerPro_MG90S.jpg) |
+| **25GA 800RPM DC Geared Motor**    | 1x       | ![25GA Motor](https://cdn.sparkfun.com//assets/parts/1/3/1/5/4/14451-01.jpg) |
+
+---
+
+> ⚠️ **Note**: If any image doesn't load in GitHub's markdown preview, make sure the URL is correct or replace it with your own uploaded image links.
+
+
+
 # 🚗 Mobility Management
 
 Mobility is at the heart of our robot's design. We aimed to create a drive and steering system that mimics real-world vehicles while optimizing for speed, torque, and control on WRO tracks.
