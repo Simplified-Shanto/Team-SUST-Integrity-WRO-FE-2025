@@ -121,26 +121,16 @@ void loop() {
 
   if (leftDistance == 0) {
     leftDistance = 100;
-    if (turnFlag == 0) {
-      turnFlag = 1;
-      turnTimer = millis();
-      turnCount++;
-      digitalWrite(ledPin, HIGH);
-    }
+    
   } else if (rightDistance == 0) {
-    rightDistance = 100;
-    if (turnFlag == 0) {
-      turnFlag = 1;
-      turnTimer = millis();
-      turnCount++;
-      digitalWrite(ledPin, HIGH);
-    }
+    rightDistance = 100; 
+    
   }
 
-  if (millis() - turnTimer > turn_delay) {
-    turnFlag = 0;
-    digitalWrite(ledPin, LOW);
-  }
+  // if (millis() - turnTimer > turn_delay) {
+  //   turnFlag = 0;
+  //   digitalWrite(ledPin, LOW);
+  // }
 
   if (turnCount >= 12) {
     gameStarted = 0;
@@ -148,7 +138,7 @@ void loop() {
     digitalWrite(in1Pin, LOW); 
     digitalWrite(in2Pin, LOW); 
     //turnCount = 0;
-    turnFlag = 1;
+    //turnFlag = 1;
     steering_servo.write(midAngle);
   }
 
