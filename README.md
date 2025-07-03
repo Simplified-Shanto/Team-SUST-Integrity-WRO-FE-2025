@@ -98,7 +98,7 @@ We built this robot and documentation not just for a competition, but to share, 
 | Component                          | Quantity | Image |
 |------------------------------------|:--------:|:-----:|
 | **Raspberry Pi 4B**                | 1x       | <img src="https://www.pngkey.com/png/detail/51-511751_raspberry-pi-3-model-b-raspberry-pi-3.png" width="120"/> |
-| **ESP32 Dev Board**               | 1x       | <img src="https://hr.mouser.com/images/espressifsystems/lrg/ESP32-DevKitC-32E_SPL.jpg" width="120"/> |
+| **ESP32 Dev Board**               | 1x       | <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQWmwffDOI8gw4A1DdMETa1_DUL9Ho8iO5MAA&s" width="120"/> |
 | **HC-SR04 Ultrasonic Sensor**     | 4x       | <img src="https://github.com/Simplified-Shanto/Team-Integral-Constant-WRO-FE-2025/blob/main/Power%20and%20Sense%20Management/assets/sr04.png?raw=true" width="120"/> |
 | **Raspberry Pi Camera Module**     | 1x       | <img src="https://github.com/Simplified-Shanto/Team-Integral-Constant-WRO-FE-2025/raw/main/Power%20and%20Sense%20Management/assets/pi.png" width="120"/> |
 | **L298N Motor Driver Module**      | 1x       | <img src="https://lastminuteengineers.com/wp-content/uploads/arduino/L298N-Module-Speed-Control-Pins.png" width="120"/> |
@@ -110,7 +110,6 @@ We built this robot and documentation not just for a competition, but to share, 
 
 </div>
 ---
-> ⚠️ **Note**: If any image doesn't load in GitHub's markdown preview, make sure the URL is correct or replace it with your own uploaded image links.
 
 
 
