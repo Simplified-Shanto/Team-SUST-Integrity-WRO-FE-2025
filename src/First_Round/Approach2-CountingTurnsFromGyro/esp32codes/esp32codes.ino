@@ -120,7 +120,7 @@ void loop() {
   int backDistance = backSonar.ping_cm();
 
   if (leftDistance == 0) {
-    leftDistance = 200;
+    leftDistance = 100;
     if (turnFlag == 0) {
       turnFlag = 1;
       turnTimer = millis();
@@ -128,13 +128,13 @@ void loop() {
       digitalWrite(ledPin, HIGH);
     }
   } else if (rightDistance == 0) {
-    rightDistance = 200;
-    // if (turnFlag == 0) {
-    //   turnFlag = 1;
-    //   turnTimer = millis();
-    //   turnCount++;
-    //   digitalWrite(ledPin, HIGH);
-    // }
+    rightDistance = 100;
+    if (turnFlag == 0) {
+      turnFlag = 1;
+      turnTimer = millis();
+      turnCount++;
+      digitalWrite(ledPin, HIGH);
+    }
   }
 
   if (millis() - turnTimer > turn_delay) {
@@ -148,7 +148,7 @@ void loop() {
     digitalWrite(in1Pin, LOW); 
     digitalWrite(in2Pin, LOW); 
     //turnCount = 0;
-    turnFlag = 0;
+    turnFlag = 1;
     steering_servo.write(midAngle);
   }
 
