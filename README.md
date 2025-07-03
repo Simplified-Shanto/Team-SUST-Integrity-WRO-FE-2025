@@ -1,5 +1,15 @@
 # 👥 About the Team – **Team Integral Constant**
+---
 
+## 👥 **Team Integral Constants"**
+
+- **Nayeem Islam Shanto**  – Team Leader, Hardware Developer | [islamnayeem386@gmail.com](mailto:islamnayeem386@gmail.com)
+- **Dipanjan Ghosh**  –  Schematic and Documentation Developer | [priomghosh33@gmail.com](mailto:priomghosh33@gmail.com)
+- **L.M. Mahir Labib** – Software Developer | [labib.programmer@gmail.com](mailto:labib.programmer@gmail.com)
+
+**Team Origin**: Bangladesh
+
+---
 ---
 
 ### 🌟 Why the name *Integral Constant*?
