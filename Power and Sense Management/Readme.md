@@ -2,9 +2,9 @@
 ====
 In the realm of robotics, effective power and sense management is the linchpin of our robot's performance. Our cutting-edge system ensures optimal resource allocation, revolutionizing how robots interact with their surroundings.
 
-## 1. Power Management: ![Screenshot 2025-07-03 163932](https://github.com/user-attachments/assets/e7bbecae-5366-49e5-855b-807b34e9d7d6)
+## 1. Power Management: 
 
-<img align="center" width="565" alt="Power" src="https://github.com/LabibProjects/Bangladesh_Team-Electrobot/assets/133244520/43bbd256-99ae-4685-831e-1c7c8020c8ad">
+<img align="center" width="565" alt="Power" src="![Screenshot 2025-07-03 163932](https://github.com/user-attachments/assets/e7bbecae-5366-49e5-855b-807b34e9d7d6)">
 ">
 
    At first from lithium ion cell we are fetching 3.7v and being 12v by XL60009. then HW-411A LM2596 are cosuming power to 3.3v for the sensor e.g. Pi Camera, SR04 ultrasonic sensor and gyroscope MPU 6050.  Laterby we are suplying 5v to servo 12v to BTS7960 and motor being powered to.
