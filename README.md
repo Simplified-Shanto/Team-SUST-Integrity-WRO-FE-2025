@@ -188,7 +188,7 @@ To simplify the design and enhance control, we transitioned to a **Rack and Pini
 
 - All electrical joints are soldered and insulated
 - Gear systems are housed to prevent accidental entanglement
-- LiPo battery is securely mounted with a cutoff mechanism
+- Battery is securely mounted with a cutoff mechanism
 
 ---
 
