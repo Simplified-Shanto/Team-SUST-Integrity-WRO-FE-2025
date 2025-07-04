@@ -121,14 +121,13 @@ void loop() {
   }
 
 
-  if (turnCount >= 12) {
+  if (digitalRead(button2Pin)==LOW) {  //For the time being, we'll stop the second button to stop the car and first button to start the car. 
     gameStarted = 0;
     goForward(0); //Stops the car. 
     digitalWrite(in1Pin, LOW); 
     digitalWrite(in2Pin, LOW); 
-    //turnCount = 0;
-    turnFlag = 1;
     steering_servo.write(midAngle);
+    delay(300); //Debounce delay
   }
 
   value = leftDistance - rightDistance;

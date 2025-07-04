@@ -14,8 +14,9 @@ void buzz(int duration)
 
 void checkButton()
 { 
-   if (digitalRead(buttonPin) == LOW) {
-   gameStarted = 1; 
+  if (digitalRead(buttonPin) == LOW) {
+  gameStarted = 1; 
+  Serial.print("r"); //Commands the raspberry pie to restart the line order detection process
   delay(300); 
   goForward(forwardSpeed);
   }
