@@ -180,3 +180,17 @@ void loop() {
     checkButton();
   }
 }
+
+
+
+void checkButton()
+{ 
+  if (digitalRead(buttonPin) == LOW) {
+  gameStarted = 1; 
+  Serial.print("r"); //Commands the raspberry pie to restart the line order detection process
+  setPoint = 0; //Trying to be in the middle when we don't know the game direction
+  delay(1000); // Waiting for the raspberry
+  goForward(forwardSpeed);
+  }
+}
+
