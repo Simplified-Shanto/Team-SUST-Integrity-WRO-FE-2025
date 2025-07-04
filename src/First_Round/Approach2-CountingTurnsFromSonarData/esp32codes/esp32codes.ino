@@ -14,18 +14,11 @@ int turnCount = 0;
 double value = 0;     // Stores the difference between the left and right readings.
 double error = 0;     // The difference between value and setpoint.
 double lastError = 0; 
+
 double setPoint = 0;  // The amount of difference in reading of the two ultrasonic sensor we want.
-unsigned long turnTimer = millis();
-#define turn_delay 1500  // milliseconds
+//Above one is the initial setPoint which keeps the vehicle centered in a tunnel
+double dynamicSetPoint = 0; //This setpoint is assigned after determining the run direction 
 
-
-void checkTurn() {
-  if (turnFlag == 0) {
-    turnCount += 1;
-    turnFlag = 1;
-    buzz(100);  //Enable the buzzer for the argument duration
-  }
-}
 
 void setup() {
   // put your setup code here, to run once:
@@ -35,7 +28,7 @@ void setup() {
   Kd = preferences.getDouble("Kd", 0);
   debugPrint = preferences.getInt("dP", 0);  //dP = debugPrint
   forwardSpeed = preferences.getInt("speed", 0);
-  setPoint = preferences.getDouble("setPoint",0); //The amount of difference in reading of the two ultrasonic sensor we want.
+  dynamicSetPoint = preferences.getDouble("dSetPoint",0); 
 
   pinMode(ledPin, OUTPUT);
   pinMode(buttonPin, INPUT_PULLUP);
@@ -48,12 +41,7 @@ void setup() {
   steering_servo.attach(steering_servo_pin, 500, 2400);  // attaches the servo on pin 18 to the servo object
   steering_servo.write(midAngle);
   delay(1000);
-  // steering_servo.write(rightAngle);
-  // delay(1000);
-  // steering_servo.write(midAngle);
-  // delay(1000);
-  // steering_servo.write(leftAngle);
-  // delay(1000);
+
   ledcSetup(LEDC_CHANNEL, 1000, 8);     // Set LEDC channel, frequency, and resolution
   ledcAttachPin(pwmPin, LEDC_CHANNEL);  // Attach the GPIO pin to the LEDC channel
   pinMode(in1Pin, OUTPUT);
@@ -86,6 +74,12 @@ void loop() {
       goForward(forwardSpeed);
     } else {
       switch (constant_name) {
+        case 'o': //There's orange line before blue , round is clockwise
+          setPoint = dynamicSetPoint; 
+          break; 
+        case 'b': //There's blue line before orange , round is anticlockwise
+          setPoint = (-1)*dynamicSetPoint; 
+          break; 
         case 'p':  //Proportional of PID
           Kp = constant_value;
           preferences.putDouble("Kp", Kp);
@@ -103,10 +97,11 @@ void loop() {
           preferences.putInt("dP", debugPrint);
           display.clearDisplay();
           display.display();
-          // delay(2000);
-        case 'S': //Setpoint setup
-          setPoint = double(constant_value); 
-          preferences.putDouble("setPoint", setPoint);
+
+        case 'S': //dynamic Setpoint setup
+          dynamicSetPoint = double(constant_value); 
+          preferences.putDouble("dSetPoint", dynamicSetPoint);
+
         default:
           break;
       }
@@ -121,26 +116,10 @@ void loop() {
 
   if (leftDistance == 0) {
     leftDistance = 100;
-    if (turnFlag == 0) {
-      turnFlag = 1;
-      turnTimer = millis();
-      turnCount++;
-      digitalWrite(ledPin, HIGH);
-    }
   } else if (rightDistance == 0) {
     rightDistance = 100;
-    if (turnFlag == 0) {
-      turnFlag = 1;
-      turnTimer = millis();
-      turnCount++;
-      digitalWrite(ledPin, HIGH);
-    }
   }
 
-  if (millis() - turnTimer > turn_delay) {
-    turnFlag = 0;
-    digitalWrite(ledPin, LOW);
-  }
 
   if (turnCount >= 12) {
     gameStarted = 0;

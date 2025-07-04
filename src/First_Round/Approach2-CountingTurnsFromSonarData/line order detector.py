@@ -22,6 +22,8 @@ blue_upper = np.array([179, 255, 255 ])
 orange_lower = np.array([0, 127, 163 ])
 orange_upper = np.array([47, 255, 255 ])
 
+thresholdArea = 1000
+
 while True:
     frame = picam2.capture_array()
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
@@ -32,7 +34,25 @@ while True:
     mask_blue = cv2.inRange(hsv, blue_lower, blue_upper)
     mask_orange = cv2.inRange(hsv, orange_lower, orange_upper)
     
+    blue_contours = cv2.findContours(mask_blue, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    orange_contours = cv2.findContours(mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
+    #This basically measures, which color of threshold area do we get first
+    for cnt in blue_contours: 
+        if cv2.contourArea(cnt) > thresholdArea:
+            message = 'b;'
+            ser.write(message).encode('utf-8')
+            ser.close()
+            break
+
+    for cnt in orange_contours: 
+        if cv2.contourArea(cnt) > thresholdArea:
+            message = 'o;'
+            ser.write(message).encode('utf-8')
+            ser.close()
+            break
+
+     
     cv2.imshow("blue_mask", mask_blue)
     cv2.imshow("orange_mask", mask_orange)
     
