@@ -34,24 +34,32 @@ while True:
     mask_blue = cv2.inRange(hsv, blue_lower, blue_upper)
     mask_orange = cv2.inRange(hsv, orange_lower, orange_upper)
     
-    blue_contours = cv2.findContours(mask_blue, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    orange_contours = cv2.findContours(mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    blue_contours, _ = cv2.findContours(mask_blue, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    orange_contours, _ = cv2.findContours(mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     #This basically measures, which color of threshold area do we get first
-    for cnt in blue_contours: 
-        if cv2.contourArea(cnt) > thresholdArea:
+    for contour_index, contour in enumerate(blue_contours): 
+        area = cv2.contourArea(contour)
+        print("blue = ", area)
+        if cv2.contourArea(contour) > thresholdArea:
             message = 'b;'
-            ser.write(message).encode('utf-8')
+            ser.write(message.encode('utf-8'))
+            time.sleep(1)
             ser.close()
             break
+            
 
-    for cnt in orange_contours: 
-        if cv2.contourArea(cnt) > thresholdArea:
+    for cntour_index, contour in enumerate(orange_contours): 
+        area = cv2.contourArea(contour)
+        print("orange = ", area)
+        if area > thresholdArea:
             message = 'o;'
-            ser.write(message).encode('utf-8')
+            ser.write(message.encode('utf-8'))
+            time.sleep(1)
             ser.close()
             break
-
+            
+        
      
     cv2.imshow("blue_mask", mask_blue)
     cv2.imshow("orange_mask", mask_orange)
@@ -59,6 +67,7 @@ while True:
 
     # Press 'q' to quit
     if cv2.waitKey(1) & 0xFF == ord('q'):
+        ser.close()
         break
 
 picam2.stop()
