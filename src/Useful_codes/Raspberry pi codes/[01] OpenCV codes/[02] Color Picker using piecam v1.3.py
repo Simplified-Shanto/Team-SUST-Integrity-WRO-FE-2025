@@ -74,9 +74,9 @@ while True:
     mask = cv2.inRange(imgHSV, lower, upper)
     imgResult = cv2.bitwise_and(img, img, mask = mask)
 
+    cv2.imshow("Result", imgResult)
+   # imgStack = stackImages(0.5, ([img, imgHSV], [mask, imgResult]))
+    #imgStack = cv2.flip(imgStack, 1)
 
-    imgStack = stackImages(0.5, ([img, imgHSV], [mask, imgResult]))
-    imgStack = cv2.flip(imgStack, 1)
-
-    cv2.imshow("Stacked Images", imgStack)
+   # cv2.imshow("Stacked Images", imgStack)
     cv2.waitKey(1)

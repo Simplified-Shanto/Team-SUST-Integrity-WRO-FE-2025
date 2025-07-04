@@ -16,18 +16,25 @@ config = picam2.create_preview_configuration(main={"size": (640, 480)})
 picam2.configure(config)
 picam2.start()
 
-blue_lower = np.array([ ])
-blue_upper = np.array([ ])
+blue_lower = np.array([71, 203 , 0 ])
+blue_upper = np.array([179, 255, 255 ])
 
-orange_lower = np.array([])
-orange_upper = np.array([])
+orange_lower = np.array([0, 127, 163 ])
+orange_upper = np.array([47, 255, 255 ])
 
 while True:
     frame = picam2.capture_array()
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
     #cv2.imshow("Original", frame)
     frame = frame[100:400, 150:590] #cropping the image to extract only useful part
-    cv2.imshow("Cropped", frame)
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    
+    mask_blue = cv2.inRange(hsv, blue_lower, blue_upper)
+    mask_orange = cv2.inRange(hsv, orange_lower, orange_upper)
+    
+    
+    cv2.imshow("blue_mask", mask_blue)
+    cv2.imshow("orange_mask", mask_orange)
     
 
     # Press 'q' to quit
