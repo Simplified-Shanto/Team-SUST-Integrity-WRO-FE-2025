@@ -21,6 +21,7 @@ double dynamicSetPoint = 0; //This setpoint is assigned after determining the ru
 
 String piStatus = "Not ready"; // Whether raspberry pie is ready for image processing
 
+int terminalDistanceThreshold = 80; 
 
 void setup() {
   // put your setup code here, to run once:
@@ -103,7 +104,9 @@ void loop() {
 
         case 'S': //dynamic Setpoint setup
           dynamicSetPoint = double(constant_value); 
+          terminalDistanceThreshold = dynamicSetPoint; 
           preferences.putDouble("dSetPoint", dynamicSetPoint);
+          preferences.end();  // Saves variables to EEPROM
           break; 
 
         case 'r': // Raspberry pie is ready for 
@@ -117,16 +120,19 @@ void loop() {
   }
 
   int frontDistance = middleSonar.ping_cm();
+  
   int leftDistance = leftSonar.ping_cm();
   int rightDistance = rightSonar.ping_cm();
   int backDistance = backSonar.ping_cm();
 
-  if (leftDistance == 0) {
-    leftDistance = 100;
-  } else if (rightDistance == 0) {
-    rightDistance = 100;
-  }
+  
 
+
+  if (leftDistance == 0) {
+    leftDistance = terminalDistanceThreshold;
+  } else if (rightDistance == 0) {
+    rightDistance = terminalDistanceThreshold;
+  }
 
   if (digitalRead(button2Pin)==LOW) {  //For the time being, we'll stop the second button to stop the car and first button to start the car. 
     gameStarted = 0;
@@ -140,7 +146,6 @@ void loop() {
   value = leftDistance - rightDistance;
   error = value - setPoint;
   // int frontConstant = 40;
-  //  double frontProportion = 1;
   // double multiplier = (frontConstant - frontDistance) * (frontDistance < 20) * frontProportion;
   //   if (multiplier == 0) { multiplier = 1; }
   double PIDangle = error * Kp + (error - lastError) * Kd;
@@ -170,8 +175,8 @@ void loop() {
     display.println(forwardSpeed);
     display.print("turns = ");
     display.println(turnCount);
-    display.print("sp = "); 
-    display.println(setPoint); 
+    display.print("tsd = "); 
+    display.println(terminalDistanceThreshold); 
     display.print("PiStatus = ");  // Whether raspi is ready for image processing. 
     display.println(piStatus); 
     display.display();
