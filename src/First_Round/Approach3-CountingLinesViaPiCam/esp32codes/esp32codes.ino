@@ -19,6 +19,8 @@ double setPoint = 0;  // The amount of difference in reading of the two ultrason
 //Above one is the initial setPoint which keeps the vehicle centered in a tunnel
 double dynamicSetPoint = 0; //This setpoint is assigned after determining the run direction 
 
+String piStatus = "Not ready"; // Whether raspberry pie is ready for image processing
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -97,10 +99,15 @@ void loop() {
           preferences.putInt("dP", debugPrint);
           display.clearDisplay();
           display.display();
+          break; 
 
         case 'S': //dynamic Setpoint setup
           dynamicSetPoint = double(constant_value); 
           preferences.putDouble("dSetPoint", dynamicSetPoint);
+          break; 
+
+        case 'r': // Raspberry pie is ready for 
+          piStatus = "ready"; 
 
         default:
           break;
@@ -165,6 +172,8 @@ void loop() {
     display.println(turnCount);
     display.print("sp = "); 
     display.println(setPoint); 
+    display.print("PiStatus = ");  // Whether raspi is ready for image processing. 
+    display.println(piStatus); 
     display.display();
   }
 
