@@ -40,5 +40,5 @@ void loop() {
   Serial.print(" | Total Angle Z (°): ");
   Serial.println(angleZ);
 
-  delay(10); // Small delay (~100Hz sampling rate)
+ // delay(10); // Small delay (~100Hz sampling rate)
 }
