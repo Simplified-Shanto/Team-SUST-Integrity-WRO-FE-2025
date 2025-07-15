@@ -52,7 +52,6 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 def nothing(x):
     pass
 
-
 # --- Create General Trackbar Window
 cv2.namedWindow("General HSV Trackbars", cv2.WINDOW_NORMAL)
 cv2.resizeWindow("General HSV Trackbars", 600, 300)
@@ -107,8 +106,8 @@ while True:
         print("Error: Failed to grab frame. Exiting...")
         break
 
-    # Flip horizontally 
-    frame = cv2.flip(frame, 1)
+    # # Flip horizontally -> if you are using the front facing webcam of your computer
+    # frame = cv2.flip(frame, 1)
 
     frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
     detection_frame = frame.copy()
