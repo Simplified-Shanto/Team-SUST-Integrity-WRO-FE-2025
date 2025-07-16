@@ -14,7 +14,7 @@ MIN_OBJECT_AREA = 500  # Minimum contour area to consider an object (adjust as n
 # Object dimensions and camera focal length for distance estimation (in cm and px)
 # KNOWN_WIDTH_CM should correspond to the 'w' (width)  of the object
 KNOWN_WIDTH_CM = 5.0  # Object's physical width
-FOCAL_LENGTH_PX = 875.0  # Focal length in pixels 
+FOCAL_LENGTH_PX = 535  # Focal length in pixels - 530 for micropack webcam
 
 # --- Safe Zone Configuration (in pixels) ---
 SAFE_ZONE_WIDTH_PX = 100  # Width of the safe zone in the center of the frame
@@ -80,17 +80,10 @@ cv2.createTrackbar("U - S", "General HSV Trackbars", 255, 255, nothing)
 cv2.createTrackbar("U - V", "General HSV Trackbars", 255, 255, nothing)
 
 
-def estimate_distance(perceived_dimension_px):
-    """Estimates distance to an object given its perceived dimension in pixels.
-    Uses KNOWN_WIDTH_CM and FOCAL_LENGTH_PX from global config."""
-    if perceived_dimension_px == 0:
-        return 0.0
-    return round((KNOWN_WIDTH_CM * FOCAL_LENGTH_PX) / perceived_dimension_px, 2)
 
 
 # --- Frame rate control  ---
 frame_delay_target_ms = int(1000 / TARGET_FPS)
-
 # --- Calculate Safe Zone Coordinates for drawing and per-object calculation ---
 SAFE_ZONE_CENTER_X = FRAME_WIDTH // 2
 SAFE_ZONE_LEFT_EDGE_X = SAFE_ZONE_CENTER_X - (SAFE_ZONE_WIDTH_PX // 2)

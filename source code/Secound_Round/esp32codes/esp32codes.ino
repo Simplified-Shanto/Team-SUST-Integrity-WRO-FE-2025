@@ -111,6 +111,14 @@ void loop() {
           break; 
         case 'G': //Green obstacle's distance
           greenObstacleDistance = int(constant_value); // obstacle distance will be 0 when it is beyond the vision range of the vehicle
+          if(greenObstacleDistance==0) 
+          {
+            setPoint = 0; 
+          }
+          else 
+          {
+            setPoint = -67; //Green obstacle is near the vehicle, so it will try to follow the left wall 
+          }
           break; 
 
         default:
@@ -150,17 +158,17 @@ void loop() {
   lastError = error;
 
   ////////////////Obstacle Handling//////////////////////////////////////
-  if(redObstacleDistance!=0 and redObstacleDistance > greenObstacleDistance)
-  {
-    setPoint = 67; //Red obstacle is near the vehicle, so it will try to follow the right wall
-  }
-  else if(greenObstacleDistance!=0 and greenObstacleDistance > redObstacleDistance)
-  {
-    setPoint = -67; //Green obstacle is near the vehicle, so it will try to follow the left wall 
-  }
-  else {
-   setPoint = 0; //The vehicle is not encountering any obstacle in it's vision range
-  }
+  // if(redObstacleDistance!=0 and redObstacleDistance > greenObstacleDistance)
+  // {
+  //   setPoint = 67; //Red obstacle is near the vehicle, so it will try to follow the right wall
+  // }
+  // if(greenObstacleDistance!=0 )
+  // {
+  //   setPoint = -67; //Green obstacle is near the vehicle, so it will try to follow the left wall 
+  // }
+  // else  {
+  //  setPoint = 0; //The vehicle is not encountering any obstacle in it's vision range
+  // }
 
   if (debugPrint == 1) {
     display.clearDisplay();
@@ -193,7 +201,6 @@ void loop() {
     display.display();
   }
 
-
   if (gameStarted == 1) {
     int steer_angle = midAngle;
     if (PIDangle > 0) {
@@ -205,8 +212,6 @@ void loop() {
   } else {
     checkButton();
   }
-
-
 }
 
 

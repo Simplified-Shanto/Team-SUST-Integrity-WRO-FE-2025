@@ -17,7 +17,7 @@ try:
 	while True:
 		time.sleep(1)
 		message = "l:" + counter + ";"
-		ser.write(message).encode('utf-8')
+		ser.write(message.encode('utf-8'))
 		counter+=1
 		
 except KeyboardInterrupt:
