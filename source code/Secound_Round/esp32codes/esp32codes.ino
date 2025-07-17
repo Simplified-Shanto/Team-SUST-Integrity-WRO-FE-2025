@@ -72,13 +72,20 @@ void loop() {
     // Serial.println(constant_value); //Though there are more decimal places in the variable,
     //                                 // the print function only prints upto two decimal places
     if (command == "x") {  // Commands the car to stop
-      gameStarted = 0;
-      goForward(0);
-      steering_servo.write(midAngle);
-    } else if (command == "y") {
-      gameStarted = 1;
-      goForward(forwardSpeed);
-    } else {
+      if(gameStarted==1)
+      {
+        gameStarted = 0;
+        goForward(0);
+        steering_servo.write(midAngle);
+      }
+      else
+      {
+        gameStarted = 1; 
+        goForward(forwardSpeed);
+        steering_servo.write(midAngle);
+      }
+    } 
+    else {
       switch (constant_name) {
         case 'p':  //Proportional of PID
           Kp = constant_value;
@@ -108,17 +115,12 @@ void loop() {
           piStatus = "ready"; 
         case 'R': //Red obstacle's distance 
           redObstacleDistance = int(constant_value); // obstacle distance will be 0 when it is beyond the vision range of the vehicle
+          changeSetPoint();
           break; 
+
         case 'G': //Green obstacle's distance
           greenObstacleDistance = int(constant_value); // obstacle distance will be 0 when it is beyond the vision range of the vehicle
-          if(greenObstacleDistance==0) 
-          {
-            setPoint = 0; 
-          }
-          else 
-          {
-            setPoint = -67; //Green obstacle is near the vehicle, so it will try to follow the left wall 
-          }
+          changeSetPoint();
           break; 
 
         default:
@@ -214,7 +216,21 @@ void loop() {
   }
 }
 
-
+void changeSetPoint()
+{
+  if(redObstacleDistance==0 && greenObstacleDistance==0) 
+          {
+            setPoint = 0; 
+          }
+          else if(redObstacleDistance > greenObstacleDistance)
+          {
+            setPoint = 67; //Green obstacle is near the vehicle, so it will try to follow the left wall 
+          }
+          else if(redObstacleDistance < greenObstacleDistance)
+          {
+            setPoint = -67;
+          }
+}
 
 void checkButton()
 { 
