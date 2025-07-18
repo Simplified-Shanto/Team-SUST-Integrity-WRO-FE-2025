@@ -3,12 +3,14 @@ import cv2
 import serial
 import time
 import math
+import utilis #This python script contains function to stack all the frames being analyzed
 
 # --- Configuration ---
-SERIAL_READY = 1 #Whether a serial device is connected or not
-CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam
-MACHINE = 0 # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
+SERIAL_READY = 0 #Whether a serial device is connected or not
+CAMERA_INDEX = 1    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam
+MACHINE = 0  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 COM_PORT = 3
+TUNE_HSV = 1 # whether we want to tune the hsv color values for different image elements. 
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
 MIN_OBJECT_AREA = 500  # Minimum contour area to consider an object (adjust as needed)
@@ -31,34 +33,21 @@ def estimate_distance(perceived_dimension_px):
         return 0.0
     return round((KNOWN_WIDTH_CM * FOCAL_LENGTH_PX) / perceived_dimension_px, 2)
 
-def nothing(x):
-    pass
-# --- Create General Trackbar Window
-cv2.namedWindow("HSV Trackbars", cv2.WINDOW_NORMAL)
-#cv2.resizeWindow("HSV Trackbars", 600, 300)
-cv2.waitKey(100)  # Wait 100ms for the window to draw
-# Create trackbars for general HSV lower and upper bounds
-#                                          Intial value of trackbar    Highest value of the trackbar
-cv2.createTrackbar("Green L - H", "HSV Trackbars",          25,                           179,             nothing)
-cv2.createTrackbar("Green L - S", "HSV Trackbars", 135, 255, nothing)
-cv2.createTrackbar("Green L - V", "HSV Trackbars", 50, 255, nothing)
-cv2.createTrackbar("Green U - H", "HSV Trackbars", 55, 179, nothing)
-cv2.createTrackbar("Green U - S", "HSV Trackbars", 255, 255, nothing)
-cv2.createTrackbar("Green U - V", "HSV Trackbars", 255, 255, nothing)
-# HSV tuning trackbars for red objects
-cv2.createTrackbar("Red L - H1", "HSV Trackbars", 0, 179, nothing)
-cv2.createTrackbar("Red L - H2", "HSV Trackbars", 175, 179, nothing)
-cv2.createTrackbar("Red L - S", "HSV Trackbars", 181, 255, nothing)
-cv2.createTrackbar("Red L - V", "HSV Trackbars", 70, 255, nothing)
-cv2.createTrackbar("Red U - H1", "HSV Trackbars", 5, 179, nothing)
-cv2.createTrackbar("Red U - H2", "HSV Trackbars", 179, 179, nothing)
-cv2.createTrackbar("Red U - S", "HSV Trackbars", 255, 255, nothing)
-cv2.createTrackbar("Red U - V", "HSV Trackbars", 255, 255, nothing)
+    # Define bounds for the general trackbar mask
+lower_bound_green = np.array([25, 135, 50])
+upper_bound_green = np.array([55, 255, 255])
 
+lower_bound1_red = np.array([0, 181, 70])
+upper_bound1_red = np.array([5, 255, 255])
 
-# --- Initialize camera ---
+lower_bound2_red = np.array([175, 181, 70])
+upper_bound2_red = np.array([179, 255, 255])
+    
+
+if TUNE_HSV==1:
+    utilis.createTrackbarWindow()
+# # --- Initialize camera ---
 cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
- # Set camera resolution
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
@@ -77,49 +66,50 @@ while True:
         print("Error: Failed to grab frame. Exiting...")
         break
     frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
-   
-    # detection_frame = frame.copy()
-    # Converting to HSV color 
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
     # --- Get Trackbar Positions for general HSV tuning ---
-    g_l_h = cv2.getTrackbarPos("Green L - H", "HSV Trackbars") #g_l_h = green object's lower hue value
-    g_l_s = cv2.getTrackbarPos("Green L - S", "HSV Trackbars")
-    g_l_v = cv2.getTrackbarPos("Green L - V", "HSV Trackbars")
-    g_u_h = cv2.getTrackbarPos("Green U - H", "HSV Trackbars")
-    g_u_s = cv2.getTrackbarPos("Green U - S", "HSV Trackbars")
-    g_u_v = cv2.getTrackbarPos("Green U - V", "HSV Trackbars")
+    if TUNE_HSV == 1:
+        g_l_h = cv2.getTrackbarPos("Green L - H", "HSV Trackbars") #g_l_h = green object's lower hue value
+        g_l_s = cv2.getTrackbarPos("Green L - S", "HSV Trackbars")
+        g_l_v = cv2.getTrackbarPos("Green L - V", "HSV Trackbars")
+        g_u_h = cv2.getTrackbarPos("Green U - H", "HSV Trackbars")
+        g_u_s = cv2.getTrackbarPos("Green U - S", "HSV Trackbars")
+        g_u_v = cv2.getTrackbarPos("Green U - V", "HSV Trackbars")
 
-    r_l_h1 = cv2.getTrackbarPos("Red L - H1", "HSV Trackbars") #r_l_h = red object's lower hue value
-    r_l_h2 = cv2.getTrackbarPos("Red L - H2", "HSV Trackbars") #r_l_h = red object's lower hue value
+        r_l_h1 = cv2.getTrackbarPos("Red L - H1", "HSV Trackbars") #r_l_h = red object's lower hue value
+        r_l_h2 = cv2.getTrackbarPos("Red L - H2", "HSV Trackbars") #r_l_h = red object's lower hue value
 
-    r_l_s = cv2.getTrackbarPos("Red L - S", "HSV Trackbars")
-    r_l_v = cv2.getTrackbarPos("Red L - V", "HSV Trackbars")
+        r_l_s = cv2.getTrackbarPos("Red L - S", "HSV Trackbars")
+        r_l_v = cv2.getTrackbarPos("Red L - V", "HSV Trackbars")
 
-    r_u_h1 = cv2.getTrackbarPos("Red U - H1", "HSV Trackbars")
-    r_u_h2 = cv2.getTrackbarPos("Red U - H2", "HSV Trackbars")
+        r_u_h1 = cv2.getTrackbarPos("Red U - H1", "HSV Trackbars")
+        r_u_h2 = cv2.getTrackbarPos("Red U - H2", "HSV Trackbars")
 
-    r_u_s = cv2.getTrackbarPos("Red U - S", "HSV Trackbars")
-    r_u_v = cv2.getTrackbarPos("Red U - V", "HSV Trackbars")
+        r_u_s = cv2.getTrackbarPos("Red U - S", "HSV Trackbars")
+        r_u_v = cv2.getTrackbarPos("Red U - V", "HSV Trackbars")
 
-    # Define bounds for the general trackbar mask
-    lower_bound_green = np.array([g_l_h, g_l_s, g_l_v])
-    upper_bound_green = np.array([g_u_h, g_u_s, g_u_v])
-    blue_mask = cv2.inRange(hsv, lower_bound_green, upper_bound_green) #the output image has white pixels only where there's blue (according to the trackbar hsv range), all other pixels are black
-    
-    lower_bound1_red = np.array([r_l_h1, r_l_s, r_l_v])
-    upper_bound1_red = np.array([r_u_h1, r_u_s, r_u_v])
+            # Define bounds for the general trackbar mask
+        lower_bound_green = np.array([g_l_h, g_l_s, g_l_v])
+        upper_bound_green = np.array([g_u_h, g_u_s, g_u_v])
+        #blue_mask = cv2.inRange(hsv, lower_bound_green, upper_bound_green) #the output image has white pixels only where there's blue (according to the trackbar hsv range), all other pixels are black
+        
+        lower_bound1_red = np.array([r_l_h1, r_l_s, r_l_v])
+        upper_bound1_red = np.array([r_u_h1, r_u_s, r_u_v])
 
-    lower_bound2_red = np.array([r_l_h2, r_l_s, r_l_v])
-    upper_bound2_red = np.array([r_u_h2, r_u_s, r_u_v])
+        lower_bound2_red = np.array([r_l_h2, r_l_s, r_l_v])
+        upper_bound2_red = np.array([r_u_h2, r_u_s, r_u_v])
 
     # Green object mask
     green_mask = cv2.inRange(hsv, lower_bound_green, upper_bound_green)
-    #green_masked_frame = cv2.bitwise_and(frame, green_mask)
+    green_masked_frame = cv2.bitwise_and(frame,frame,  mask = green_mask)
+    #Why frame is passed two times in the above function?  Because cv2.bitwise_and() is designed to combine two images (pixel by pixel using the AND operation). If you want to apply a mask on a single image (frame), you simply bitwise AND it with itself. That way: Each pixel P in the result becomes: P = frame AND frame → which is just P, but only where the mask is non-zero.
 
        # 1. Detect Red objects
     red_mask1 = cv2.inRange(hsv, lower_bound1_red, upper_bound1_red)
     red_mask2 = cv2.inRange(hsv, lower_bound2_red, upper_bound2_red)
     red_mask_combined = cv2.bitwise_or(red_mask1, red_mask2)
+    red_masked_frame = cv2.bitwise_and(frame, frame, mask = red_mask_combined)
     
     #blue_image = cv2.bitwise_and(frame, frame, mask = blue_mask) # In blue_image we only see the pixels that are white in blue_mask, so we only see the particular color of the hsv range, all other pixels are made black. 
     contours_red, _ = cv2.findContours(
@@ -180,10 +170,8 @@ while True:
                     print("Serial: G:0; ")
                     serialFlag2 = 1
      
-
-    cv2.imshow("green_mask_frame", green_mask)
-    cv2.imshow("red_mask", red_mask_combined)
-    cv2.imshow("RawFrame", frame)
+    stackedImages = utilis.stackImages(0.6, ([frame, green_masked_frame, red_masked_frame], [frame, frame, frame]))
+    cv2.imshow("Frames", stackedImages)
     key = cv2.waitKey(1)  #Purpose of the above expression: It waits for a speciefied amount of time(in milliseconds) for a key event to occur. This small delay is crucial when processing video streams, as it allows the system to display each frame for a brief period, creating the illusion of continuosu motion. Without this delay, the frames would be processed and displayed so quickly that the video would appear as a blur or not be visible at all. And in most cases, the window will have "Not responding" problem and ultimately crash. During this delay, cv2.waitKey(1) also checks if any key has been pressed. If any key has been prssed. If a key is pressed within the 1-millisecond window, it returns the ascii value fo that pressed key. If no key is pressed within that time, it returns -1. 
     if key == ord('q'): # Stops the execution of the entire python program
         if SERIAL_READY==1:
