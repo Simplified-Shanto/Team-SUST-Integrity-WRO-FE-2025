@@ -57,7 +57,7 @@ cv2.createTrackbar("Red U - V", "HSV Trackbars", 255, 255, nothing)
 
 
 # --- Initialize camera ---
-cap = cv2.VideoCapture(CAMERA_INDEX)
+cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
  # Set camera resolution
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
