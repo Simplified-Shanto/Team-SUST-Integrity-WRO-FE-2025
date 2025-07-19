@@ -54,6 +54,18 @@ blue_line_upper_bound = np.array([135, 255, 255 ])
 orange_line_lower_bound = np.array([10, 150, 150 ])
 orange_line_upper_bound = np.array([24, 255, 255 ])
 
+
+cv2.namedWindow("Vehicle Parameters", cv2.WINDOW_NORMAL)  # This window will be used to tune different parameters of the vehicle, like speed, pid values etc via serial commands
+cv2.resizeWindow("Vehicle Parameters", 600, 400)
+cv2.waitKey(100)
+def changeVehicleSpeed(speed):
+     if SERIAL_READY: 
+          ser.write(f"s:{speed};".encode("utf-8"))
+     print(f"Serial: s:{speed};")
+     
+cv2.createTrackbar("Speed", "Vehicle Parameters", 100, 255, changeVehicleSpeed)
+
+
 def nothing(x):
     pass
 
