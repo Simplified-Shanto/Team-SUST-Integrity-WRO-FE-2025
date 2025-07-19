@@ -21,7 +21,7 @@ unsigned int greenObstacleDistance = 0;
 double setPoint = 0;  // The amount of difference in reading of the two ultrasonic sensor we want.
 //Above one is the initial setPoint which keeps the vehicle centered in a tunnel
 double dynamicSetPoint = 0; //This setpoint is assigned after determining the run direction 
-
+int setPointMultiplier = 1; // -1 = round is clockwise 1 = round is anticlockwise
 String piStatus = "Not ready"; // Whether raspberry pie is ready for image processing
 
 int terminalDistanceThreshold = 80; 
@@ -87,6 +87,14 @@ void loop() {
     } 
     else {
       switch (constant_name) {
+        case 'b': // Blue line is encountered before the orange line in the runtime of the python script -> round is anti-clockwise
+          setPointMultiplier = 1; 
+          changeSetPoint(); //Fix the sign of the setpoint
+          break; 
+        case 'o': // Orange line is encountered before the blue line in the runtie of the python script -> round is clockwise
+          setPointMultiplier = -1; 
+          changeSetPoint(); //Fix the sign of the setpoint
+          break; 
         case 'p':  //Proportional of PID
           Kp = constant_value;
           preferences.putDouble("Kp", Kp);
@@ -159,19 +167,8 @@ void loop() {
   double PIDangle = error * Kp + (error - lastError) * Kd;
   lastError = error;
 
-  ////////////////Obstacle Handling//////////////////////////////////////
-  // if(redObstacleDistance!=0 and redObstacleDistance > greenObstacleDistance)
-  // {
-  //   setPoint = 67; //Red obstacle is near the vehicle, so it will try to follow the right wall
-  // }
-  // if(greenObstacleDistance!=0 )
-  // {
-  //   setPoint = -67; //Green obstacle is near the vehicle, so it will try to follow the left wall 
-  // }
-  // else  {
-  //  setPoint = 0; //The vehicle is not encountering any obstacle in it's vision range
-  // }
 
+ 
   if (debugPrint == 1) {
     display.clearDisplay();
     display.setCursor(0, 0);
@@ -216,6 +213,7 @@ void loop() {
   }
 }
 
+  ////////////////Obstacle Handling//////////////////////////////////////
 void changeSetPoint()
 {
   if(redObstacleDistance==0 && greenObstacleDistance==0) 
@@ -224,11 +222,11 @@ void changeSetPoint()
           }
           else if(redObstacleDistance > greenObstacleDistance)
           {
-            setPoint = 67; //Green obstacle is near the vehicle, so it will try to follow the left wall 
+            setPoint = 67*setPointMultiplier; //Green obstacle is near the vehicle, so it will try to follow the left wall 
           }
           else if(redObstacleDistance < greenObstacleDistance)
           {
-            setPoint = -67;
+            setPoint = -67*setPointMultiplier;
           }
 }
 

@@ -44,28 +44,9 @@ def stackImages(scale,imgArray):
 # cv2.imshow("Vertical Stack", imgVer)
 #cv2.waitKey(0)
 
-def nothing(x):
-    pass
+
+
+
 
 def createTrackbarWindow():
-            # --- Create General Trackbar Window
-    cv2.namedWindow("HSV Trackbars", cv2.WINDOW_NORMAL)
-    #cv2.resizeWindow("HSV Trackbars", 600, 300)
-    cv2.waitKey(100)  # Wait 100ms for the window to draw
-    # Create trackbars for general HSV lower and upper bounds
-#                                          Intial value of trackbar    Highest value of the trackbar
-    cv2.createTrackbar("Green L - H", "HSV Trackbars",          25,                           179,             nothing)
-    cv2.createTrackbar("Green L - S", "HSV Trackbars", 135, 255, nothing)
-    cv2.createTrackbar("Green L - V", "HSV Trackbars", 50, 255, nothing)
-    cv2.createTrackbar("Green U - H", "HSV Trackbars", 55, 179, nothing)
-    cv2.createTrackbar("Green U - S", "HSV Trackbars", 255, 255, nothing)
-    cv2.createTrackbar("Green U - V", "HSV Trackbars", 255, 255, nothing)
-    # HSV tuning trackbars for red objects
-    cv2.createTrackbar("Red L - H1", "HSV Trackbars", 0, 179, nothing)
-    cv2.createTrackbar("Red L - H2", "HSV Trackbars", 175, 179, nothing)
-    cv2.createTrackbar("Red L - S", "HSV Trackbars", 181, 255, nothing)
-    cv2.createTrackbar("Red L - V", "HSV Trackbars", 70, 255, nothing)
-    cv2.createTrackbar("Red U - H1", "HSV Trackbars", 5, 179, nothing)
-    cv2.createTrackbar("Red U - H2", "HSV Trackbars", 179, 179, nothing)
-    cv2.createTrackbar("Red U - S", "HSV Trackbars", 255, 255, nothing)
-    cv2.createTrackbar("Red U - V", "HSV Trackbars", 255, 255, nothing)
+    pass

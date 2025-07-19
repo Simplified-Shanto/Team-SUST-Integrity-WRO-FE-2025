@@ -1,7 +1,4 @@
-# --- Initialize camera ---
-# if CAMERA_INDEX==0: #Laptop's built in camera
-#     cap = cv2.VideoCapture(CAMERA_INDEX)
-# else: #USB camera
-#     cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
-#     #cap = cv2.VideoCapture(CAMERA_INDEX)
-# #cap = cv2.VideoCapture(CAMERA_INDEX)
+bl_u_s = cv2.getTrackbarPos("Blue Line U_S", "Line HSV trackbars")
+        bl_u_v = cv2.getTrackbarPos("Blue Line U_V", "Line HSV trackbars")
+        blue_line_lower_bound = np.array([bl_l_h, bl_l_s , bl_l_v ])
+        blue_line_upper_bound = np.array([bl_u_h, bl_u_s,  bl_u_v ])
