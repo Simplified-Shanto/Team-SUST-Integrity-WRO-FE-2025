@@ -138,7 +138,7 @@ while True:
     #         selectSetPoint = 1
     
     masked_image = cv2.bitwise_and(frame, frame, mask = mask_blue); 
-    cv2.putText(masked_image,f"lines = {line_count}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 1)
+    cv2.putText(masked_image,f"lines = {line_count}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
     cv2.imshow("blue_mask", masked_image); 
 
 
