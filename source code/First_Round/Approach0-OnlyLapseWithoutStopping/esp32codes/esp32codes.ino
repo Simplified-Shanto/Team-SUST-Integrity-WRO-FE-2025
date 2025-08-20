@@ -6,8 +6,8 @@
 #include "display.h"
 
 Preferences preferences;
-double Kp = 0;
-double Kd = 0;
+double Kp = 0; //5
+double Kd = 0; //1
 int debugPrint = 0;  //Whether we want to print all the variables to the OLED display.
 int turnFlag = 0;
 int turnCount = 0;

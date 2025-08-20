@@ -27,7 +27,7 @@ KNOWN_DISTANCE_CM = 30
 FOCAL_LENGTH_PX = 535 #Focal length in pixels - 530 for micropack webcam
 
 if SERIAL_READY and MACHINE == 1:
-    ser = serial.Serial('/dev/ttyACM2', 115200, timeout = 1.0)
+    ser = serial.Serial('/dev/esp32serial', 115200, timeout = 1.0)
 elif SERIAL_READY and MACHINE == 0:
     ser = serial.Serial(f'COM{COM_PORT}', 115200, timeout = 1.0)
 
@@ -286,6 +286,8 @@ while True:
                         ser.write("R:0;".encode('utf-8')) #Tells the LLM(low level microcontroller) that we are not seeing any blue object right now
                     print("Serial: R:0; ")
                     serialFlag = 1 #We won't send this "No blue object in vision range" continuosly, we'll just send it once
+
+  
 
   
      
