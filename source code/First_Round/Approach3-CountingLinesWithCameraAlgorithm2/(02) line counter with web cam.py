@@ -1,10 +1,10 @@
 # --- Configuration ---
 SERIAL_READY = 1 #Whether a serial device is connected or not
-CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam 
+CAMERA_INDEX = 1    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam 
 COM_PORT = 3
-MACHINE = 0  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
+MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
-##!/usr/bin/env python3
+#!/usr/bin/env python3
 DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
@@ -39,7 +39,12 @@ blue_upper = np.array([179, 255, 255 ])
 
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
-cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
+
+if MACHINE == 0:  # Windows
+    cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
+else:             # Linux / Raspberry Pi
+    cap = cv2.VideoCapture(CAMERA_INDEX)
+    
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
@@ -70,7 +75,11 @@ if TUNE_HSV==1:
 while True:
     current_time = time.time() * 1000
     success, frame = cap.read()
-    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    if not success or frame is None:
+        if DEVELOPING==1: 
+			print("Failed to capture frame, check camera connection/index.")
+        continue
+    #frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
     #cv2.imshow("Original", frame)
     frame = frame[100:400, 150:590] #cropping the image to extract only useful part
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
