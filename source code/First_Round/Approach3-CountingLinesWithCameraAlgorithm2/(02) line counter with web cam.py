@@ -1,6 +1,6 @@
 # --- Configuration ---
 SERIAL_READY = 1 #Whether a serial device is connected or not
-CAMERA_INDEX = 1    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam 
+CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam 
 COM_PORT = 3
 MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
@@ -23,9 +23,13 @@ import serial
 if SERIAL_READY==1 and MACHINE == 1:
     ser = serial.Serial("/dev/esp32_serial", 115200, timeout = 1)
     time.sleep(2)
+    # At startup we have a fresh buffer with nothing in it. 
+    ser.reset_input_buffer()
 elif SERIAL_READY==1 and MACHINE ==0: 
     ser = serial.Serial(f'COM{COM_PORT}', 115200, timeout = 1.0)
     time.sleep(2)
+    # At startup we have a fresh buffer with nothing in it. 
+    ser.reset_input_buffer()
 
 
 # We'll count lines based on the blue line only - because, there's possiblity of overlapping for red and orange line. Later, we may count both lines with their relative order for more precise stopping at the position. 
@@ -48,7 +52,7 @@ else:             # Linux / Raspberry Pi
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
-line_count = 0
+line_count = -1 # The counting hasn't begun yet. 
 
 last_time = time.time() * 1000 # Getting the total execution time in millisecond
 
@@ -72,15 +76,24 @@ if TUNE_HSV==1:
     cv2.createTrackbar("Blue Line U_S", "Line HSV trackbars",blue_line_upper_bound[1], 255, nothing )
     cv2.createTrackbar("Blue Line U_V", "Line HSV trackbars",blue_line_upper_bound[2], 255, nothing )
 
+
+message = 'r;' #Suggests to the esp32 that the raspberry pie is ready for image processing 
+ser.write(message.encode('utf-8'))
+time.sleep(1)  
+
+
 while True:
+    if ser.in_waiting > 0: 
+        command = ser.readline().decode('utf-8') 
+        print("command = ", command)
+        if(command=="r"): 
+            line_count = 0
+        
     current_time = time.time() * 1000
     success, frame = cap.read()
-    if not success or frame is None:
-        if DEVELOPING==1: 
-			print("Failed to capture frame, check camera connection/index.")
-        continue
+    
     #frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-    #cv2.imshow("Original", frame)
+    # #cv2.imshow("Original", frame)
     frame = frame[100:400, 150:590] #cropping the image to extract only useful part
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     
@@ -95,15 +108,16 @@ while True:
         area = cv2.contourArea(contour)
         if DEVELOPING==1:
                 print("blue = ", area)
-        if (current_time - last_time > 2000) and (cv2.contourArea(contour) > THRESHOLD_AREA):
+        if (current_time - last_time > 2000) and (cv2.contourArea(contour) > THRESHOLD_AREA) and line_count!=-1:
             line_count = line_count + 1
             last_time = current_time
 
     if line_count==12 and SERIAL_READY: 
         message = 'x;' #Commands to stop the car. 
-        time.sleep(2)  # Waiting a bit to reach the center fo the tunnel. 
+        time.sleep(3)  # Waiting a bit to reach the center fo the tunnel. 
         ser.write(message.encode('utf-8'))
         time.sleep(1)
+        line_count = -1
 
     
     # for cntour_index, contour in enumerate(orange_contours): 
@@ -140,7 +154,6 @@ while True:
         blue_line_upper_bound = np.array([bl_u_h, bl_u_s,  bl_u_v ])
 
 
-        
     # Press 'q' to quit
     if cv2.waitKey(1) & 0xFF == ord('q'):
         if SERIAL_READY:
