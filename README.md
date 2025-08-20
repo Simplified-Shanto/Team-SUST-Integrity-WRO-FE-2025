@@ -202,23 +202,37 @@ b. Connect and use the raspberry pie via your laptop or computer via VNC (Virtua
 2. The leds in the LAN port will blink after a while indicating a proper connection. 
 3. Open command prompt in your computer.
 4. Type "ssh username@hostname". For example, when username = admin and hostname = raspi.local, the command should look like "ssh admin@raspi.local"
-5. Command prompt will ask for password, write it and hit enter.
-6. Upon successfull login, you'll see messages like this:
+5. 
+The full form of SSH is Secure Shell. It's a network protocol that provides a secure way to access and manage computer systems remotely. SSH encrypts the communication between the client and the server, ensuring that sensitive data is protected during transmission.
+
+6. Command prompt will ask for password, write it and hit enter.
+7. Upon successfull login, you'll see messages like this:
    <img width="1120" height="286" alt="image" src="https://github.com/user-attachments/assets/7a67875d-62df-4610-a660-cb7e541b4db3" />
 
-7. Type the following command to edit the raspberry pie configuration:
+8. Type the following command to edit the raspberry pie configuration:
      "sudo raspi-config"
-  and you'll see a graphical menu like this:
+9. and you'll see a graphical menu like this:
 <img width="654" height="368" alt="image" src="https://github.com/user-attachments/assets/2ad4bf21-4cc7-443f-a69e-65558994bb8e" />
 
-9. Then locate ->3 Interfacing options -> p3 VNC
+10. Then locate ->3 Interfacing options -> p3 VNC
     <img width="554" height="289" alt="image" src="https://github.com/user-attachments/assets/9552cbb0-12a1-435f-bd0e-9439b577b457" />
-10. Locate to VNC and hit enter, it'll ask you whether you want to enable VNC or not, enable it.
-11. Reboot your raspberry pie.
-12. Install and open Real VNC software in your computer and you'll see a search bar on top.
-13. Write the hostname in that bar and hit enter. In our example scenario, the hostname is "raspi.local"
+11. Locate to VNC and hit enter, it'll ask you whether you want to enable VNC or not, enable it.
+12. Reboot your raspberry pie.
+13. Install and open Real VNC software in your computer and you'll see a search bar on top.
+14. Write the hostname in that bar and hit enter. In our example scenario, the hostname is "raspi.local"
+15. Then as we are connecting it for the first time, Real VNC will prompt for username and password. Check mark the "Remember password" if you don't want to enter the password each time you login .
+16. At this point you should see the graphical user interface (GUI) of your raspberry pie operating system.
+
+### Process 2: Connecting the pie via wireless LAN
+1. Connect your raspberry pie and your computer to the same wifi network. In case you want to use mobile hotspot, configure your hotspot with the same ssid and password you used while configuring the os image in step 4 of process 1.
+2. Find the ip address of your raspberry pie in the wifi network. For mobile hotspot, you can use apps like "Net Analyzer" to find the ip address.
+3. Open command prompt in your computer and type the following command
+   <img width="1106" height="293" alt="image" src="https://github.com/user-attachments/assets/1fbf855b-3cce-4c01-bd16-2631259a1b48" />
+  Note that,unlike process 1 this time we are using the ip address instead of the hostname.
+4. Follow steps 7 - 12 of process 1
+5. Write the ip address in that bar and hit enter. In our example scenario, the ip address is "10.149.112.111"
 14. Then as we are connecting it for the first time, Real VNC will prompt for username and password. Check mark the "Remember password" if you don't want to enter the password each time you login .
-15. At this point you should see the graphical user interface (GUI) of your raspberry pie operating system. 
+15. At this point you should see the graphical user interface (GUI) of your raspberry pie operating system.
 
 
 ---
