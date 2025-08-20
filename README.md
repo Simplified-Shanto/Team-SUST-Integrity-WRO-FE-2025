@@ -176,6 +176,52 @@ To simplify the design and enhance control, we transitioned to a **Rack and Pini
 
 ---
 
+## Setting up the raspberry pi for image processing
+You have a brand new raspberry pie. How will you prepare that for all the image processing stuffs using opencv and python? 
+1. Download and install the raspberry pie imager in your computer.
+2. Edit the configuration to set
+  a. hostname
+  b. username
+  c. password
+  d.wifi ssid and password
+  e. enable ssh
+3. Have a note of the above parameters as you'll require them later to remotely log in to the raspberry pie.
+4. Once the os image writing process is done, insert the sd card into the raspberry pie and wait a while for the proper booting of the pie.
+
+
+
+At this point you can use the pie in 2 different ways: 
+a. Connecting an HDMI display, mouse and keyboard with the raspberry pie. 
+b. Connect and use the raspberry pie via your laptop or computer via VNC (Virtual Network Computing).
+
+
+---
+### How to enable and use VNC in the raspberry pie? 
+#### Process 1: Connecting the pie via Ethernet Cable. 
+1. Connect the LAN port of the raspberry pie and the lan port of your computer via a ethernet cable.
+2. The leds in the LAN port will blink after a while indicating a proper connection. 
+3. Open command prompt in your computer.
+4. Type "ssh username@hostname". For example, when username = admin and hostname = raspi.local, the command should look like "ssh admin@raspi.local"
+5. Command prompt will ask for password, write it and hit enter.
+6. Upon successfull login, you'll see messages like this:
+   <img width="1120" height="286" alt="image" src="https://github.com/user-attachments/assets/7a67875d-62df-4610-a660-cb7e541b4db3" />
+
+7. Type the following command to edit the raspberry pie configuration:
+     "sudo raspi-config"
+  and you'll see a graphical menu like this:
+<img width="654" height="368" alt="image" src="https://github.com/user-attachments/assets/2ad4bf21-4cc7-443f-a69e-65558994bb8e" />
+
+9. Then locate ->3 Interfacing options -> p3 VNC
+    <img width="554" height="289" alt="image" src="https://github.com/user-attachments/assets/9552cbb0-12a1-435f-bd0e-9439b577b457" />
+10. Locate to VNC and hit enter, it'll ask you whether you want to enable VNC or not, enable it.
+11. Reboot your raspberry pie.
+12. Install and open Real VNC software in your computer and you'll see a search bar on top.
+13. Write the hostname in that bar and hit enter. In our example scenario, the hostname is "raspi.local"
+14. Then as we are connecting it for the first time, Real VNC will prompt for username and password. Check mark the "Remember password" if you don't want to enter the password each time you login .
+15. At this point you should see the graphical user interface (GUI) of your raspberry pie operating system. 
+
+
+---
 ## 🧪 Testing & Calibration
 
 - ✅ PID tuning done for lap accuracy
