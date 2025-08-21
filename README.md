@@ -176,63 +176,126 @@ To simplify the design and enhance control, we transitioned to a **Rack and Pini
 
 ---
 
-## Setting up the raspberry pi for image processing
-You have a brand new raspberry pie. How will you prepare that for all the image processing stuffs using opencv and python? 
-1. Download and install the raspberry pie imager in your computer.
-2. Edit the configuration to set
-  a. hostname
-  b. username
-  c. password
-  d.wifi ssid and password
-  e. enable ssh
-3. Have a note of the above parameters as you'll require them later to remotely log in to the raspberry pie.
-4. Once the os image writing process is done, insert the sd card into the raspberry pie and wait a while for the proper booting of the pie.
-
-
-
-At this point you can use the pie in 2 different ways: 
-a. Connecting an HDMI display, mouse and keyboard with the raspberry pie. 
-b. Connect and use the raspberry pie via your laptop or computer via VNC (Virtual Network Computing).
 
 
 ---
-### How to enable and use VNC in the raspberry pie? 
-#### Process 1: Connecting the pie via Ethernet Cable. 
-1. Connect the LAN port of the raspberry pie and the lan port of your computer via a ethernet cable.
-2. The leds in the LAN port will blink after a while indicating a proper connection. 
-3. Open command prompt in your computer.
-4. Type "ssh username@hostname". For example, when username = admin and hostname = raspi.local, the command should look like "ssh admin@raspi.local"
-5. 
-The full form of SSH is Secure Shell. It's a network protocol that provides a secure way to access and manage computer systems remotely. SSH encrypts the communication between the client and the server, ensuring that sensitive data is protected during transmission.
 
-6. Command prompt will ask for password, write it and hit enter.
-7. Upon successfull login, you'll see messages like this:
-   <img width="1120" height="286" alt="image" src="https://github.com/user-attachments/assets/7a67875d-62df-4610-a660-cb7e541b4db3" />
+# 🚀 Setting Up Raspberry Pi for Image Processing with OpenCV & Python
 
-8. Type the following command to edit the raspberry pie configuration:
-     "sudo raspi-config"
-9. and you'll see a graphical menu like this:
+You just unboxed a brand-new **Raspberry Pi**. Exciting! 🎉
+Now let’s get it ready for image processing projects with OpenCV and Python.
+
+---
+
+## 🛠️ Initial Setup
+
+1. **Download & Install Raspberry Pi Imager** on your computer.
+2. In the **OS configuration menu**, set the following:
+
+   * ✅ Hostname
+   * ✅ Username
+   * ✅ Password
+   * ✅ Wi-Fi SSID & Password
+   * ✅ Enable SSH
+3. ✍️ Write down these credentials — you’ll need them for remote login later.
+4. Once the OS image is written, insert the SD card into your Raspberry Pi and let it boot up.
+
+---
+
+## 🎮 Two Ways to Use Your Raspberry Pi
+
+* **Option A**: Connect directly with an HDMI display, keyboard, and mouse.
+* **Option B**: Connect remotely from your laptop/PC via **VNC (Virtual Network Computing)**.
+
+We’ll focus on Option B since it’s super handy.
+
+---
+
+# 🔑 Enabling & Using VNC on Raspberry Pi
+
+## 📡 Process 1: Connect via Ethernet Cable
+
+1. Plug an **Ethernet cable** between your Raspberry Pi and your computer.
+2. Wait until the **LAN port LEDs blink** — connection established!
+3. On your computer, open **Command Prompt/Terminal**.
+4. Type:
+
+   ```bash
+   ssh username@hostname
+   ```
+
+   Example:
+
+   ```bash
+   ssh admin@raspi.local
+   ```
+5. Enter your password when prompted.
+
+💡 **What is SSH?**
+SSH (Secure Shell) is a secure protocol that lets you remotely access and manage systems over a network. It encrypts communication to protect your data.
+
+6. Once logged in, run:
+
+   ```bash
+   sudo raspi-config
+   ```
+
+   This opens a configuration menu:
+   ![raspi-config-menu](https://github.com/user-attachments/assets/2ad4bf21-4cc7-443f-a69e-65558994bb8e)
+
+7. Navigate to:
+   **3 Interfacing Options → P3 VNC → Enable**
+   ![enable-vnc](https://github.com/user-attachments/assets/9552cbb0-12a1-435f-bd0e-9439b577b457)
+
+8. **Reboot** your Raspberry Pi.
+
+9. On your computer, install & open **RealVNC Viewer**.
+
+10. In the search bar, enter your Pi’s **hostname** (e.g., `raspi.local`).
+
+11. First-time login will prompt for **username & password** → tick **“Remember Password”** if desired.
+
+12. 🎉 You should now see the Raspberry Pi’s desktop GUI!
+
+---
+
+## 📶 Process 2: Connect via Wi-Fi (Wireless LAN)
+
+1. Ensure your **Raspberry Pi** and **computer** are on the **same Wi-Fi network**.
+
+   * If using a mobile hotspot, configure it with the same SSID & password you set during OS imaging.
+2. Find your Raspberry Pi’s **IP address** on the network.
+
+   * Tools like **Net Analyzer** (mobile app) make this easy.
+3. From your computer, open Command Prompt/Terminal and type:
+
+   ```bash
+   ssh username@<raspberry-pi-ip>
+   ```
+
+   Example:
+
+   ```bash
+   ssh admin@10.149.112.111
+   ```
+
+   (Note: Here we use the **IP address**, not the hostname.)
+4. Follow **Steps 7–12** from **Process 1** to enable VNC.
+5. In RealVNC Viewer, enter the Pi’s **IP address**.
+6. Log in with your username & password → check **“Remember Password”** if desired.
+7. 🎉 The Raspberry Pi’s GUI should now appear on your computer!
+
+---
+
+✨ With VNC ready, you now have full graphical access to your Raspberry Pi — perfect for running **Python + OpenCV** image processing projects remotely!
+
+---
+
+
 <img width="654" height="368" alt="image" src="https://github.com/user-attachments/assets/2ad4bf21-4cc7-443f-a69e-65558994bb8e" />
-
-10. Then locate ->3 Interfacing options -> p3 VNC
-    <img width="554" height="289" alt="image" src="https://github.com/user-attachments/assets/9552cbb0-12a1-435f-bd0e-9439b577b457" />
-11. Locate to VNC and hit enter, it'll ask you whether you want to enable VNC or not, enable it.
-12. Reboot your raspberry pie.
-13. Install and open Real VNC software in your computer and you'll see a search bar on top.
-14. Write the hostname in that bar and hit enter. In our example scenario, the hostname is "raspi.local"
-15. Then as we are connecting it for the first time, Real VNC will prompt for username and password. Check mark the "Remember password" if you don't want to enter the password each time you login .
-16. At this point you should see the graphical user interface (GUI) of your raspberry pie operating system.
-
-### Process 2: Connecting the pie via wireless LAN
-1. Connect your raspberry pie and your computer to the same wifi network. In case you want to use mobile hotspot, configure your hotspot with the same ssid and password you used while configuring the os image in step 4 of process 1.
-2. Find the ip address of your raspberry pie in the wifi network. For mobile hotspot, you can use apps like "Net Analyzer" to find the ip address.
-3. Open command prompt in your computer and type the following command
+  <img width="1120" height="286" alt="image" src="https://github.com/user-attachments/assets/7a67875d-62df-4610-a660-cb7e541b4db3" />
+   <img width="554" height="289" alt="image" src="https://github.com/user-attachments/assets/9552cbb0-12a1-435f-bd0e-9439b577b457" />
    <img width="1106" height="293" alt="image" src="https://github.com/user-attachments/assets/1fbf855b-3cce-4c01-bd16-2631259a1b48" />
-  Note that,unlike process 1 this time we are using the ip address instead of the hostname.
-4. Follow steps 7 - 12 of process 1
-5. Write the ip address in that bar and hit enter. In our example scenario, the ip address is "10.149.112.111"
-14. Then as we are connecting it for the first time, Real VNC will prompt for username and password. Check mark the "Remember password" if you don't want to enter the password each time you login .
-15. At this point you should see the graphical user interface (GUI) of your raspberry pie operating system.
 
 
 # How to set static com port for the low level microcontroller?
@@ -345,6 +408,9 @@ ser = serial.Serial('/dev/esp32_serial', 115200)
 This way, no matter what port it lands on—`ttyUSB0`, `ttyUSB1`, `ttyACM0`—you’ll always connect using `/dev/esp32_serial`.
 
 ---
+
+# Install python modules like opencv, numpy, time, pyserial using following command: 
+sudo apt install python3-opencv python3-numpy python3-serial
 
 ## 🚀 Pro Tips
 
