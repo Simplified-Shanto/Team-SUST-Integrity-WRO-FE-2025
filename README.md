@@ -426,6 +426,137 @@ udevadm monitor --udev
 
 
 ---
+
+# Running your Python Script on Startup of Raspberry Pi
+
+If you want your Python script to automatically run when your Raspberry Pi boots up (without needing a monitor, keyboard, or VNC), follow these steps. We’ll use a **systemd service**, which is the recommended modern way.
+
+---
+
+## 1. Locate Your Script
+
+Make sure your Python script is at the correct path. In this guide, we’ll assume your script is here:
+
+```
+/home/admin/Desktop/startscript.py
+```
+
+Check that the script has a proper shebang at the top (this tells Linux to use Python 3):
+
+```python
+#!/usr/bin/env python3
+```
+
+---
+
+## 2. Make the Script Executable
+
+Run this command in the terminal:
+
+```bash
+chmod +x /home/admin/Desktop/startscript.py
+```
+
+---
+
+## 3. Create a systemd Service File
+
+Create a new service definition:
+
+```bash
+sudo nano /etc/systemd/system/startscript.service
+```
+
+Paste the following:
+
+```ini
+[Unit]
+Description=Startscript for Line Counter
+After=multi-user.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/admin/Desktop/startscript.py
+WorkingDirectory=/home/admin/Desktop
+StandardOutput=append:/home/admin/startscript.log
+StandardError=append:/home/admin/startscript.log
+Restart=always
+RestartSec=5
+User=admin
+
+[Install]
+WantedBy=multi-user.target
+```
+
+If you want the program run once per boot, make Restart=no and remove the line RestartSec=5. 
+This won't allow it to rerun the program if it ends its execution by some internal logic, command or crashes in the same boot session. 
+
+
+Save and exit (`CTRL+O`, `ENTER`, `CTRL+X`).
+
+---
+
+## 4. Enable the Service
+
+Reload systemd and enable your new service so it runs on every boot:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable startscript.service
+```
+
+You can start it immediately (without rebooting) using:
+
+```bash
+sudo systemctl start startscript.service
+```
+
+---
+
+## 5. Check Logs and Status
+
+* Check if your script is running:
+
+  ```bash
+  systemctl status startscript.service
+  ```
+* View live logs:
+
+  ```bash
+  journalctl -u startscript.service -f
+  ```
+* Or check the saved log file:
+
+  ```bash
+  cat /home/admin/startscript.log
+  ```
+
+---
+
+## 6. Stop or Disable Later
+
+To stop the script from running:
+
+```bash
+sudo systemctl stop startscript.service
+```
+
+To remove it from startup:
+
+```bash
+sudo systemctl disable startscript.service
+```
+
+---
+
+✅ That’s it! Your Python script will now start automatically whenever your Raspberry Pi boots up — even without HDMI or network connected.
+
+---
+
+
+
+
+
+---
 ## 🧪 Testing & Calibration
 
 - ✅ PID tuning done for lap accuracy
