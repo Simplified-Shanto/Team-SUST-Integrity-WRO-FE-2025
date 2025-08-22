@@ -28,7 +28,6 @@ if SERIAL_READY==1 and MACHINE == 1:
 elif SERIAL_READY==1 and MACHINE ==0: 
     ser = serial.Serial(f'COM{COM_PORT}', 115200, timeout = 1.0)
     time.sleep(2)
-    # At startup we have a fresh buffer with nothing in it. 
     ser.reset_input_buffer()
 
 
@@ -53,7 +52,6 @@ cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
 line_count = -1 # The counting hasn't begun yet. 
-
 last_time = time.time() * 1000 # Getting the total execution time in millisecond
 
 blue_line_lower_bound = np.array([99, 40 , 90 ])
@@ -62,7 +60,7 @@ blue_line_upper_bound = np.array([135, 255, 255 ])
 def nothing(x):
     pass
 
-if TUNE_HSV==1:
+if TUNE_HSV==1 and DEVELOPING==1:
     # --- Create General Trackbar Window
     cv2.namedWindow("HSV Trackbars", cv2.WINDOW_NORMAL) #WINDOW_NORMAL is a flag that let's user resize the window, by default its, cv2.AUTOSIZE, which makes the window fit to the size of the content and it is unresizable. 
     cv2.resizeWindow("HSV Trackbars", 600, 600)
@@ -76,17 +74,17 @@ if TUNE_HSV==1:
     cv2.createTrackbar("Blue Line U_S", "Line HSV trackbars",blue_line_upper_bound[1], 255, nothing )
     cv2.createTrackbar("Blue Line U_V", "Line HSV trackbars",blue_line_upper_bound[2], 255, nothing )
 
-
-message = 'r;' #Suggests to the esp32 that the raspberry pie is ready for image processing 
-ser.write(message.encode('utf-8'))
+if SERIAL_READY:
+    message = 'r;' #Suggests to the esp32 that the raspberry pie is ready for image processing 
+    ser.write(message.encode('utf-8'))
 time.sleep(1)  
 
 
 while True:
-    if ser.in_waiting > 0: 
+    if ser.in_waiting > 0: # If there's some message from the LLMC
         command = ser.readline().decode('utf-8') 
         print("command = ", command)
-        if(command=="r"): 
+        if(command=="r"): # The lap is starting via button press, so start counting lines
             line_count = 0
         
     current_time = time.time() * 1000
@@ -112,12 +110,12 @@ while True:
             line_count = line_count + 1
             last_time = current_time
 
-    if line_count==12 and SERIAL_READY: 
+    if line_count==12 and SERIAL_READY==1: 
         message = 'x;' #Commands to stop the car. 
         time.sleep(3)  # Waiting a bit to reach the center fo the tunnel. 
         ser.write(message.encode('utf-8'))
         time.sleep(1)
-        line_count = -1
+        line_count = -1  # We won't count lines until a new lap is started by pressing the button
 
     
     # for cntour_index, contour in enumerate(orange_contours): 
@@ -136,13 +134,13 @@ while True:
     #         command = ser.readline().decode('utf-8')
     #         print(command)
     #         selectSetPoint = 1
-    
-    masked_image = cv2.bitwise_and(frame, frame, mask = mask_blue); 
-    cv2.putText(masked_image,f"lines = {line_count}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
-    cv2.imshow("blue_mask", masked_image); 
+    if DEVELOPING==1: 
+        masked_image = cv2.bitwise_and(frame, frame, mask = mask_blue); 
+        cv2.putText(masked_image,f"lines = {line_count}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
+        cv2.imshow("blue_mask", masked_image); 
 
 
-    if TUNE_HSV == 1:
+    if DEVELOPING ==1 and TUNE_HSV == 1:
         bl_l_h = cv2.getTrackbarPos("Blue Line L_H", "Line HSV trackbars") #bl_l_h = blue line lower hue
         bl_l_s = cv2.getTrackbarPos("Blue Line L_S", "Line HSV trackbars")
         bl_l_v = cv2.getTrackbarPos("Blue Line L_V", "Line HSV trackbars")
@@ -155,10 +153,10 @@ while True:
 
 
     # Press 'q' to quit
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        if SERIAL_READY:
-            ser.close()
-        break
-
-#picam2.stop()
-cv2.destroyAllWindows()
+    if DEVELOPING==1: 
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            if SERIAL_READY:
+                ser.close()
+            break
+if DEVELOPING==1:
+    cv2.destroyAllWindows()
