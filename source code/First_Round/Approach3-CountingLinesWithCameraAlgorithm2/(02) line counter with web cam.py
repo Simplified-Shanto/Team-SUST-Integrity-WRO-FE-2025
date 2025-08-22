@@ -112,7 +112,7 @@ while True:
 
     if line_count==12 and SERIAL_READY==1: 
         message = 'x;' #Commands to stop the car. 
-        time.sleep(3)  # Waiting a bit to reach the center fo the tunnel. 
+        time.sleep(2)  # Waiting a bit to reach the center fo the tunnel. 
         ser.write(message.encode('utf-8'))
         time.sleep(1)
         line_count = -1  # We won't count lines until a new lap is started by pressing the button
