@@ -16,6 +16,8 @@ import time
 import cv2
 import numpy as np
 import serial
+import os
+
 
 
 
@@ -87,6 +89,8 @@ while True:
             print("command = ", command)
         if(command=="r"): # The lap is starting via button press, so start counting lines
             line_count = 0
+        elif command=="d": # Shutdown immediately
+            os.system("sudo shutdown now")
         
     current_time = time.time() * 1000
     success, frame = cap.read()

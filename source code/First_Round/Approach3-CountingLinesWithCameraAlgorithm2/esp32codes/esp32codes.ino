@@ -1,6 +1,3 @@
-#include <Wire.h> 
-#include <MPU6050.h> 
-
 #include <Preferences.h>
 #include "motors.h"
 #include "button.h"
@@ -8,16 +5,9 @@
 #include "sonar.h"
 #include "display.h"
 
-MPU6050 mpu;               // Create an MPU6050 object
-
-float gyroZ;               // Variable to store Z-axis angular velocity
-float angleZ = 0;          // Accumulated Z-axis angular displacement (degrees)
-
-unsigned long lastTime = 0; // Store time of last measurement
-
 Preferences preferences;
-double Kp = 0;
-double Kd = 0;
+double Kp = 0; //5
+double Kd = 0; //1
 int debugPrint = 0;  //Whether we want to print all the variables to the OLED display.
 int turnFlag = 0;
 int turnCount = 0;
@@ -64,16 +54,11 @@ void setup() {
   display.setTextColor(1);
   display.setTextSize(1);
   display.clearDisplay();
-
-  mpu.initialize();              // Initialize MPU6050 sensor
-  if (!mpu.testConnection()) {
-    Serial.println("MPU6050 connection failed!");
-    while (1);                   // Halt if sensor not found
-  }
-
-  Serial.println("MPU6050 initialized successfully.");
-  lastTime = millis();           // Initialize time reference
 }
+
+
+bool button2Flag = 0; 
+long long pressTime = millis(); 
 
 void loop() {
   if (Serial.available()) {
@@ -139,28 +124,44 @@ void loop() {
   }
 
   int frontDistance = middleSonar.ping_cm();
-  
   int leftDistance = leftSonar.ping_cm();
   int rightDistance = rightSonar.ping_cm();
   int backDistance = backSonar.ping_cm();
 
   
-
-
   if (leftDistance == 0) {
     leftDistance = terminalDistanceThreshold;
   } else if (rightDistance == 0) {
     rightDistance = terminalDistanceThreshold;
   }
 
-  if (digitalRead(button2Pin)==LOW) {  //For the time being, we'll stop the second button to stop the car and first button to start the car. 
-    gameStarted = 0;
-    goForward(0); //Stops the car. 
-    digitalWrite(in1Pin, LOW); 
-    digitalWrite(in2Pin, LOW); 
-    steering_servo.write(midAngle);
-    delay(300); //Debounce delay
+  if (button2Flag == 0 && digitalRead(button2Pin)==LOW) {  //For the time being, we'll stop the second button to stop the car and first button to start the car. 
+    button2Flag = 1; 
+    pressTime = millis(); 
+    delay(300); 
+    
   }
+
+  if (button2Flag ==1)
+  {
+    if (millis() - pressTime > 3000) // If presstime exceeds 3 second, we'll shutdown the raspi, won't wait for the release
+    {
+      Serial.write('d'); //Commands the SBC to shutdown 
+      button2Flag = 0; //Resetting the flag to detect next presses. 
+    }
+    else if(digitalRead(button2Pin)==HIGH) // We've detected a short press, turn off the motors to stop the lapse. 
+    {
+      gameStarted = 0;
+      goForward(0); //Stops the car. 
+      digitalWrite(in1Pin, LOW); 
+      digitalWrite(in2Pin, LOW); 
+      steering_servo.write(midAngle);
+      button2Flag = 0; //Resetting the flag to detect next presses. 
+    }
+    
+  }
+
+  
 
   value = leftDistance - rightDistance;
   error = value - setPoint;
@@ -169,25 +170,6 @@ void loop() {
   //   if (multiplier == 0) { multiplier = 1; }
   double PIDangle = error * Kp + (error - lastError) * Kd;
   lastError = error;
-
-   // Get the current time
-  unsigned long currentTime = millis();                // Current time in ms
-  float dt = (currentTime - lastTime) / 1000.0;        // Convert to seconds
-  lastTime = currentTime;                              // Update lastTime for next loop
-
-  // Read gyroscope raw data (in degrees/sec)
-  gyroZ = mpu.getRotationZ() / 131.0;  // Convert raw to deg/sec (131 LSB/(°/s) for ±250°/s range)
-
-  // Integrate angular velocity to find angular displacement
-  angleZ += gyroZ * dt;  // Δθ = ω × Δt
-
-  // Output results
-  // Serial.print("Gyro Z (deg/s): ");
-  // Serial.print(gyroZ);
-  // Serial.print(" | Total Angle Z (°): ");
-  // Serial.println(angleZ);
-
- // delay(10); // Small delay (~100Hz sampling rate)
 
   if (debugPrint == 1) {
     display.clearDisplay();
@@ -211,8 +193,8 @@ void loop() {
     display.println(Kd);
     display.print("sped = ");
     display.println(forwardSpeed);
-    display.print("ANGZ = ");
-    display.println(angleZ);
+    display.print("turns = ");
+    display.println(turnCount);
     display.print("tsd = "); 
     display.println(terminalDistanceThreshold); 
     display.print("PiStatus = ");  // Whether raspi is ready for image processing. 
@@ -231,8 +213,6 @@ void loop() {
   } else {
     checkButton();
   }
-
- 
 }
 
 
