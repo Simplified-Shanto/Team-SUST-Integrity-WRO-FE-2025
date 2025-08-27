@@ -427,6 +427,68 @@ udevadm monitor --udev
 
 ---
 
+## Test Your Webcam Feed
+
+Before running the full OpenCV script, it’s important to make sure your camera is working properly. This avoids unnecessary debugging later if the issue is just with the webcam feed.
+
+### Steps:
+
+1. Make sure your Raspberry Pi is set up and your webcam is connected.
+
+2. Install OpenCV for Python (if not already done):
+
+   ```bash
+   pip install opencv-python
+   ```
+
+3. Create a new Python file called `test_camera.py` and paste the following code:
+
+   ```python
+   import cv2
+
+   cap = cv2.VideoCapture(0)  # 0 is usually the default camera
+
+   if not cap.isOpened():
+       print("Error: Could not open camera.")
+       exit()
+
+   while True:
+       ret, frame = cap.read()
+       if not ret:
+           print("Error: Failed to capture frame.")
+           break
+
+       cv2.imshow("Webcam Feed", frame)
+
+       # Press 'q' to exit the window
+       if cv2.waitKey(1) & 0xFF == ord('q'):
+           break
+
+   cap.release()
+   cv2.destroyAllWindows()
+   ```
+
+4. Run the script:
+
+   ```bash
+   python test_camera.py
+   ```
+
+5. A window should pop up showing your live webcam feed.
+
+   * If you see the video feed, your camera is working fine.
+   * If you don’t, check if your camera is properly connected and detected by the system using:
+
+     ```bash
+     ls /dev/video*
+     ```
+
+---
+
+
+
+---
+
 # Running your Python Script on Startup of Raspberry Pi
 
 If you want your Python script to automatically run when your Raspberry Pi boots up (without needing a monitor, keyboard, or VNC), follow these steps. We’ll use a **systemd service**, which is the recommended modern way.
@@ -551,6 +613,39 @@ sudo systemctl disable startscript.service
 ✅ That’s it! Your Python script will now start automatically whenever your Raspberry Pi boots up — even without HDMI or network connected.
 
 ---
+
+
+
+
+# Safe Shutdown for Raspberry Pi via Serial Command
+
+Normally, if you unplug the power from your Raspberry Pi without shutting it down first, you risk corrupting the SD card or losing data. To prevent this, the Pi should always be shut down properly before the power is removed.
+
+In this setup, we achieve a graceful shutdown without needing a display (HDMI) or remote access (VNC/SSH).
+
+How it works
+
+A low-level microcontroller (e.g., Arduino/ESP) detects a trigger event (such as a button press, sensor signal, or external condition).
+
+It sends a shutdown command over Serial (UART/USB) to the Raspberry Pi.
+
+A Python script running on the Pi (using PySerial
+) listens for this command.
+
+Once received, the script executes:
+
+sudo shutdown now
+
+
+The Pi powers down safely, protecting the filesystem and ensuring no data loss.
+
+Why this matters
+
+✅ Prevents SD card corruption caused by abrupt power cuts
+
+✅ Works without a monitor, keyboard, or VNC session
+
+✅ Can be triggered by just a button press or any hardware event handled by the microcontroller
 
 
 
