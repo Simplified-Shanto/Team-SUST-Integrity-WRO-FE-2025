@@ -114,7 +114,8 @@ void loop() {
           break; 
 
         case 'r': // Raspberry pie is ready for 
-          piStatus = "ready"; 
+          piStatus = "ready";
+          digitalWrite(ledPin,  HIGH); 
 
         default:
           break;
