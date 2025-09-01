@@ -9,7 +9,7 @@ DEVELOPING   = 0 # The code is in development mode, and we'll show processed ima
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
 THRESHOLD_AREA = 1000
-
+lineInterval = 1000 # The interval between counting consecutive lines. 
 
 
 import time
@@ -91,6 +91,13 @@ while True:
             line_count = 0
         elif command=="d": # Shutdown immediately
             os.system("sudo shutdown now")
+        else: 
+            lineInterval = command
+            if DEVELOPING: 
+                print("Line Interval = ", lineInterval)
+            
+
+
         
     current_time = time.time() * 1000
     success, frame = cap.read()
@@ -111,7 +118,7 @@ while True:
         area = cv2.contourArea(contour)
         if DEVELOPING==1:
                 print("blue = ", area)
-        if (current_time - last_time > 2000) and (cv2.contourArea(contour) > THRESHOLD_AREA) and line_count!=-1:
+        if (current_time - last_time > lineInterval) and (cv2.contourArea(contour) > THRESHOLD_AREA) and line_count!=-1:
             line_count = line_count + 1
             last_time = current_time
 
