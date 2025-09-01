@@ -32,9 +32,7 @@ void setup() {
   stopDelay = preferences.getInt("stopDelay",0 );
   Kp = preferences.getDouble("Kp", 0);
   Kd = preferences.getDouble("Kd", 0);
-  //debugPrint = preferences.getInt("dP", 0);  //dP = debugPrint
   forwardSpeed = preferences.getInt("speed", 0);
-  //dynamicSetPoint = preferences.getDouble("dSetPoint",0); 
 
   pinMode(ledPin, OUTPUT);
   pinMode(buttonPin, INPUT_PULLUP);
@@ -94,19 +92,14 @@ void loop() {
     //                                 // the print function only prints upto two decimal places
     if (command == "x") {  // Commands the car to stop
       gameStarted = 0;
-      goForward(0);
       steering_servo.write(midAngle);
+      goForward(0);
+      
     } else if (command == "y") {
       gameStarted = 1;
       goForward(forwardSpeed);
     } else {
       switch (constant_name) {
-        // case 'o': //There's orange line before blue , round is clockwise
-        //   setPoint = dynamicSetPoint; 
-        //   break; 
-        // case 'b': //There's blue line before orange , round is anticlockwise
-        //   setPoint = (-1)*dynamicSetPoint; 
-        //   break; 
         case 'p':  //Proportional of PID
           Kp = constant_value;
           preferences.putDouble("Kp", Kp);
@@ -119,19 +112,6 @@ void loop() {
           forwardSpeed = int(constant_value);
           preferences.putInt("speed", forwardSpeed);
           break;
-        // case 'D':  //Debug print flag
-        //   debugPrint = int(constant_value);
-        //   preferences.putInt("dP", debugPrint);
-        //   display.clearDisplay();
-        //   display.display();
-        //   break; 
-
-        // case 'S': //dynamic Setpoint setup
-        //   dynamicSetPoint = double(constant_value); 
-        //   terminalDistanceThreshold = dynamicSetPoint; 
-        //   preferences.putDouble("dSetPoint", dynamicSetPoint);
-        //   preferences.end();  // Saves variables to EEPROM
-        //   break; 
 
         case 'r': // Raspberry pie is ready for 
           Serial.print("a:"); 
@@ -144,7 +124,7 @@ void loop() {
         default:
           break;
       }
-      preferences.end();  // Saves variables to EEPROM
+     // preferences.end();  // Saves variables to EEPROM
     }
   }
 
@@ -273,7 +253,7 @@ void loop() {
         preferences.putInt("speed", forwardSpeed);
         preferences.putInt("lineInterval", lineInterval); 
         preferences.putInt("stopDelay", stopDelay); 
-        preferences.end();  // Saves variables to EEPROM
+       // preferences.end();  // Saves variables to EEPROM
         editParameter = 0; 
 
         // Updates the associated variables in the SBC
@@ -300,10 +280,6 @@ void loop() {
       } 
       else if(editParameter == 0) { editParameter = 1; }
     }
-    // Serial.print("gap = "); 
-    // Serial.println(gap); 
-    // Serial.print("editParam = "); 
-    // Serial.println(editParameter); 
     button1Flag = 0; 
   }
   
@@ -319,22 +295,16 @@ void loop() {
   if (editParameter == 1) {
     display.clearDisplay();
     display.setCursor(0, 0);
-    // display.print(middleSonar.ping_cm());
-    // display.print(" ");
     display.print(rightSonar.ping_cm());
     display.print(" ");
     display.print(leftSonar.ping_cm());
     display.print(" ");
-    // display.print(backSonar.ping_cm());
-    // display.print(" ");
-    // display.print(analogRead(IRpin));
-    // display.println();
-    // display.setCursor(0, 30);
+    display.print(int(PIDangle));
+    display.println(" deg"); 
+
     if(editParameter==1 && parameterIndex==0){ display.print("> "); }
     display.print("Speed: ");
     display.println(forwardSpeed);
-    display.print("ang = ");
-    display.println(int(PIDangle));
     if(editParameter==1 && parameterIndex==1){ display.print("> "); }
     display.print("Kp:");
     display.println(Kp);
@@ -348,10 +318,6 @@ void loop() {
     display.print("StopDel: ");
     display.println(stopDelay);
 
-    //display.print("turns = ");
-    // display.println(turnCount);
-    // display.print("tsd = "); 
-    // display.println(terminalDistanceThreshold); 
     display.println(); 
     display.display();
   }
@@ -370,15 +336,4 @@ void loop() {
 }
 
 
-
-// void checkButton()
-// { 
-//   if (digitalRead(buttonPin) == LOW) {
-//   gameStarted = 1; 
-//   Serial.print("r"); //Commands the raspberry pie to restart the line order detection process
-//   setPoint = 0; //Trying to be in the middle when we don't know the game direction
-//   delay(1000); // Waiting for the raspberry
-//   goForward(forwardSpeed);
-//   }
-// }
 
