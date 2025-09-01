@@ -83,19 +83,60 @@ time.sleep(1)
 
 
 while True:
-    if ser.in_waiting > 0: # If there's some message from the LLMC
-        command = ser.readline().decode('utf-8') 
-        if DEVELOPING==1:
-            print("command = ", command)
-        if(command=="r"): # The lap is starting via button press, so start counting lines
+    # if ser.in_waiting > 0: # If there's some message from the LLMC
+    #     command = ser.readline().decode('utf-8') 
+    #     if DEVELOPING==1:
+    #         print("command = ", command)
+    #     if(command=="r"): # The lap is starting via button press, so start counting lines
+    #         line_count = 0
+    #     elif command=="d": # Shutdown immediately
+    #         os.system("sudo shutdown now")
+    #     else: 
+    #         lineInterval = command
+    #         if DEVELOPING: 
+    #             print("Line Interval = ", lineInterval)
+
+    if ser.in_waiting > 0:  # If there's some message from Arduino
+        command = ser.readline().decode('utf-8').strip()  # Read line & strip newline/spaces
+        
+        if DEVELOPING == 1:
+            print("Raw command = ", command)
+
+        # Case 1: simple one-letter command like 'r' or 'd'
+        if command == "r":   # The lap is starting via button press, so start counting lines
             line_count = 0
-        elif command=="d": # Shutdown immediately
+            if DEVELOPING: print("Lap started (reset line count).")
+
+        elif command == "d": # Shutdown immediately
             os.system("sudo shutdown now")
-        else: 
-            lineInterval = command
-            if DEVELOPING: 
-                print("Line Interval = ", lineInterval)
-            
+
+        else:
+            # Case 2: format 'char:value;' (e.g., 'p:1.23;')
+            if ':' in command:
+                try:
+                    constant_name, value_str = command.split(":", 1)
+                    constant_value = float(value_str)
+
+                    if DEVELOPING:
+                        print(f"constant_name = {constant_name}, constant_value = {constant_value}")
+
+                    # Handle based on the constant_name
+                    if constant_name == 'a':
+                        lineInterval = constant_value
+                    elif constant_name == 'b':
+                        stopDelay = constant_value
+                    else:
+                        if DEVELOPING: print("Unknown constant:", constant_name)
+
+                except ValueError:
+                    if DEVELOPING: print("Invalid format received:", command)
+
+            else:
+                # If it's not in the expected format, treat it as your lineInterval
+                lineInterval = command
+                if DEVELOPING:
+                    print("Line Interval = ", lineInterval)
+
 
 
         
@@ -124,9 +165,9 @@ while True:
 
     if line_count==12 and SERIAL_READY==1: 
         message = 'x;' #Commands to stop the car. 
-        time.sleep(2)  # Waiting a bit to reach the center fo the tunnel. 
+        time.sleep(stopDelay/1000)  # Waiting a bit to reach the center fo the tunnel. 
         ser.write(message.encode('utf-8'))
-        time.sleep(1)
+        #time.sleep(1)
         line_count = -1  # We won't count lines until a new lap is started by pressing the button
 
     

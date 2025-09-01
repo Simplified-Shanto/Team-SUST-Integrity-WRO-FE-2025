@@ -8,12 +8,13 @@
 Preferences preferences;
 double Kp = 0; //5
 double Kd = 0; //1
-int lineInterval = 0; 
-int turnFlag = 0;
-int turnCount = 0;
+int lineInterval = 0; //time (ms) to wait in the image processing programme between lines counted. 
+int stopDelay = 0;    //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms) 
 double value = 0;     // Stores the difference between the left and right readings.
 double error = 0;     // The difference between value and setpoint.
 double lastError = 0; 
+
+#define parameterCount 5 // Number of configurable parameters
 
 double setPoint = 0;  // The amount of difference in reading of the two ultrasonic sensor we want.
 //Above one is the initial setPoint which keeps the vehicle centered in a tunnel
@@ -28,6 +29,7 @@ void setup() {
   Serial.begin(115200);
   preferences.begin("wrobot", false);
   lineInterval = preferences.getInt("lineInterval", 0); 
+  stopDelay = preferences.getInt("stopDelay",0 );
   Kp = preferences.getDouble("Kp", 0);
   Kd = preferences.getDouble("Kd", 0);
   //debugPrint = preferences.getInt("dP", 0);  //dP = debugPrint
@@ -64,6 +66,8 @@ void setup() {
   display.println(forwardSpeed);
   display.print("Line Intv: ");
   display.println(lineInterval);
+  display.print("stopDel: "); 
+  display.println(stopDelay); 
   display.display(); 
 }
 
@@ -130,7 +134,11 @@ void loop() {
         //   break; 
 
         case 'r': // Raspberry pie is ready for 
-          piStatus = "ready";
+          Serial.print("a:"); 
+          Serial.println(lineInterval); 
+          Serial.print("b:");
+          Serial.println(stopDelay);
+          delay(500); 
           digitalWrite(ledPin,  HIGH); 
 
         default:
@@ -185,8 +193,14 @@ void loop() {
             Kd-=0.05; 
             break; 
           case 3: 
-          lineInterval-=100; 
+          lineInterval-=50; 
           break; 
+
+          case 4: 
+          stopDelay-=50; 
+          break; 
+
+
           default: 
             break;  
         }
@@ -217,9 +231,6 @@ void loop() {
         if(gameStarted==0) {
          gameStarted = 1; 
          Serial.print("r"); //Commands the raspberry pie to restart the line order detection process
-         delay(500); 
-         Serial.print(lineInterval); // Informs the raspberry pie about the interval between counting lines on each restart of the match 
-         setPoint = 0; //Trying to be in the middle when we don't know the game direction
          delay(500); // Waiting for the raspberry
          goForward(forwardSpeed);
        }
@@ -238,8 +249,12 @@ void loop() {
             Kd+=0.05; 
             break; 
           case 3: 
-            lineInterval+=100; 
+            lineInterval+=50; 
             break; 
+          case 4: 
+            stopDelay+=50; 
+            break; 
+
           default: 
             break;  
         }
@@ -247,7 +262,7 @@ void loop() {
     }
     else if (gap < 3000)
     {
-      parameterIndex = (parameterIndex+1)%4; 
+      parameterIndex = (parameterIndex+1)%parameterCount; 
     }
     else if(gap < 5000)
     {
@@ -257,18 +272,29 @@ void loop() {
         preferences.putDouble("Kd", Kd);
         preferences.putInt("speed", forwardSpeed);
         preferences.putInt("lineInterval", lineInterval); 
+        preferences.putInt("stopDelay", stopDelay); 
         preferences.end();  // Saves variables to EEPROM
         editParameter = 0; 
+
+        // Updates the associated variables in the SBC
+        Serial.print("a:"); 
+        Serial.println(lineInterval); 
+        Serial.print("b:");
+        Serial.println(stopDelay);
+
+
         display.clearDisplay();
         display.setCursor(0, 0); 
+        display.print("Speed: ");
+        display.println(forwardSpeed);
         display.print("Kp:");
         display.println(Kp);
         display.print("Kd:");
         display.println(Kd);
-        display.print("Speed: ");
-        display.println(forwardSpeed);
         display.print("Line Intv: ");
         display.println(lineInterval);
+        display.print("StopDel: ");
+        display.print(stopDelay); 
 
         display.display(); 
       } 
@@ -304,6 +330,9 @@ void loop() {
     // display.print(analogRead(IRpin));
     // display.println();
     // display.setCursor(0, 30);
+    if(editParameter==1 && parameterIndex==0){ display.print("> "); }
+    display.print("Speed: ");
+    display.println(forwardSpeed);
     display.print("ang = ");
     display.println(int(PIDangle));
     if(editParameter==1 && parameterIndex==1){ display.print("> "); }
@@ -312,19 +341,17 @@ void loop() {
     if(editParameter==1 && parameterIndex==2){ display.print("> "); }
     display.print("Kd:");
     display.println(Kd);
-    if(editParameter==1 && parameterIndex==0){ display.print("> "); }
-    display.print("Speed: ");
-    display.println(forwardSpeed);
     if(editParameter==1 && parameterIndex==3){ display.print("> "); }
-    display.print("Line Intv: ");
+    display.print("LineIntv: ");
     display.println(lineInterval);
+    if(editParameter==1 && parameterIndex==4){ display.print("> "); }
+    display.print("StopDel: ");
+    display.println(stopDelay);
 
     //display.print("turns = ");
     // display.println(turnCount);
     // display.print("tsd = "); 
     // display.println(terminalDistanceThreshold); 
-    display.println("SBC = ");  // Whether SBC is ready for image processing. 
-    display.print(piStatus); 
     display.println(); 
     display.display();
   }
