@@ -8,7 +8,7 @@
 Preferences preferences;
 double Kp = 0; //5
 double Kd = 0; //1
-int debugPrint = 0;  //Whether we want to print all the variables to the OLED display.
+int lineInterval = 0; 
 int turnFlag = 0;
 int turnCount = 0;
 double value = 0;     // Stores the difference between the left and right readings.
@@ -27,11 +27,12 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   preferences.begin("wrobot", false);
+  lineInterval = preferences.getInt("lineInterval", 0); 
   Kp = preferences.getDouble("Kp", 0);
   Kd = preferences.getDouble("Kd", 0);
-  debugPrint = preferences.getInt("dP", 0);  //dP = debugPrint
+  //debugPrint = preferences.getInt("dP", 0);  //dP = debugPrint
   forwardSpeed = preferences.getInt("speed", 0);
-  dynamicSetPoint = preferences.getDouble("dSetPoint",0); 
+  //dynamicSetPoint = preferences.getDouble("dSetPoint",0); 
 
   pinMode(ledPin, OUTPUT);
   pinMode(buttonPin, INPUT_PULLUP);
@@ -54,6 +55,16 @@ void setup() {
   display.setTextColor(1);
   display.setTextSize(1);
   display.clearDisplay();
+  display.setCursor(0, 0); 
+  display.print("Kp:");
+  display.println(Kp);
+  display.print("Kd:");
+  display.println(Kd);
+  display.print("Speed: ");
+  display.println(forwardSpeed);
+  display.print("Line Intv: ");
+  display.println(lineInterval);
+  display.display(); 
 }
 
 
@@ -86,12 +97,12 @@ void loop() {
       goForward(forwardSpeed);
     } else {
       switch (constant_name) {
-        case 'o': //There's orange line before blue , round is clockwise
-          setPoint = dynamicSetPoint; 
-          break; 
-        case 'b': //There's blue line before orange , round is anticlockwise
-          setPoint = (-1)*dynamicSetPoint; 
-          break; 
+        // case 'o': //There's orange line before blue , round is clockwise
+        //   setPoint = dynamicSetPoint; 
+        //   break; 
+        // case 'b': //There's blue line before orange , round is anticlockwise
+        //   setPoint = (-1)*dynamicSetPoint; 
+        //   break; 
         case 'p':  //Proportional of PID
           Kp = constant_value;
           preferences.putDouble("Kp", Kp);
@@ -104,19 +115,19 @@ void loop() {
           forwardSpeed = int(constant_value);
           preferences.putInt("speed", forwardSpeed);
           break;
-        case 'D':  //Debug print flag
-          debugPrint = int(constant_value);
-          preferences.putInt("dP", debugPrint);
-          display.clearDisplay();
-          display.display();
-          break; 
+        // case 'D':  //Debug print flag
+        //   debugPrint = int(constant_value);
+        //   preferences.putInt("dP", debugPrint);
+        //   display.clearDisplay();
+        //   display.display();
+        //   break; 
 
-        case 'S': //dynamic Setpoint setup
-          dynamicSetPoint = double(constant_value); 
-          terminalDistanceThreshold = dynamicSetPoint; 
-          preferences.putDouble("dSetPoint", dynamicSetPoint);
-          preferences.end();  // Saves variables to EEPROM
-          break; 
+        // case 'S': //dynamic Setpoint setup
+        //   dynamicSetPoint = double(constant_value); 
+        //   terminalDistanceThreshold = dynamicSetPoint; 
+        //   preferences.putDouble("dSetPoint", dynamicSetPoint);
+        //   preferences.end();  // Saves variables to EEPROM
+        //   break; 
 
         case 'r': // Raspberry pie is ready for 
           piStatus = "ready";
@@ -173,6 +184,9 @@ void loop() {
           case 2: 
             Kd-=0.05; 
             break; 
+          case 3: 
+          lineInterval-=100; 
+          break; 
           default: 
             break;  
         }
@@ -203,8 +217,10 @@ void loop() {
         if(gameStarted==0) {
          gameStarted = 1; 
          Serial.print("r"); //Commands the raspberry pie to restart the line order detection process
+         delay(500); 
+         Serial.print(lineInterval); // Informs the raspberry pie about the interval between counting lines on each restart of the match 
          setPoint = 0; //Trying to be in the middle when we don't know the game direction
-         delay(1000); // Waiting for the raspberry
+         delay(500); // Waiting for the raspberry
          goForward(forwardSpeed);
        }
       } 
@@ -221,6 +237,9 @@ void loop() {
           case 2: 
             Kd+=0.05; 
             break; 
+          case 3: 
+            lineInterval+=100; 
+            break; 
           default: 
             break;  
         }
@@ -228,7 +247,7 @@ void loop() {
     }
     else if (gap < 3000)
     {
-      parameterIndex = (parameterIndex+1)%3; 
+      parameterIndex = (parameterIndex+1)%4; 
     }
     else if(gap < 5000)
     {
@@ -237,8 +256,21 @@ void loop() {
         preferences.putDouble("Kp", Kp);
         preferences.putDouble("Kd", Kd);
         preferences.putInt("speed", forwardSpeed);
+        preferences.putInt("lineInterval", lineInterval); 
         preferences.end();  // Saves variables to EEPROM
         editParameter = 0; 
+        display.clearDisplay();
+        display.setCursor(0, 0); 
+        display.print("Kp:");
+        display.println(Kp);
+        display.print("Kd:");
+        display.println(Kd);
+        display.print("Speed: ");
+        display.println(forwardSpeed);
+        display.print("Line Intv: ");
+        display.println(lineInterval);
+
+        display.display(); 
       } 
       else if(editParameter == 0) { editParameter = 1; }
     }
@@ -258,7 +290,7 @@ void loop() {
   double PIDangle = error * Kp + (error - lastError) * Kd;
   lastError = error;
 
-  if (debugPrint == 1) {
+  if (editParameter == 1) {
     display.clearDisplay();
     display.setCursor(0, 0);
     // display.print(middleSonar.ping_cm());
@@ -283,6 +315,10 @@ void loop() {
     if(editParameter==1 && parameterIndex==0){ display.print("> "); }
     display.print("Speed: ");
     display.println(forwardSpeed);
+    if(editParameter==1 && parameterIndex==3){ display.print("> "); }
+    display.print("Line Intv: ");
+    display.println(lineInterval);
+
     //display.print("turns = ");
     // display.println(turnCount);
     // display.print("tsd = "); 
