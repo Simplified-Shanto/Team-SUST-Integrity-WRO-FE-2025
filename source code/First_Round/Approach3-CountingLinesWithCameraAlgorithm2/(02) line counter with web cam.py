@@ -5,7 +5,7 @@ COM_PORT = 3
 MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
 #!/usr/bin/env python3
-DEVELOPING   = 0 # The code is in development mode, and we'll show processed images at different stages, 
+DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
 THRESHOLD_AREA = 1000
@@ -157,8 +157,8 @@ while True:
     #This basically measures, which color of threshold area do we get first
     for contour_index, contour in enumerate(blue_contours): 
         area = cv2.contourArea(contour)
-        if DEVELOPING==1:
-                print("blue = ", area)
+       # if DEVELOPING==1:
+               # print("blue = ", area)
         if (current_time - last_time > lineInterval) and (cv2.contourArea(contour) > THRESHOLD_AREA) and line_count!=-1:
             line_count = line_count + 1
             last_time = current_time
