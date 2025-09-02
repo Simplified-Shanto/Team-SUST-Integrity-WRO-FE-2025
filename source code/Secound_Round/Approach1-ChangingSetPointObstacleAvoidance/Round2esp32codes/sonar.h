@@ -8,8 +8,8 @@
 
 //left = 32
 //NewPing middleSonar = NewPing(33, 33, MAX_DISTANCE);
-NewPing leftSonar = NewPing(32, 32, MAX_DISTANCE);
-NewPing rightSonar = NewPing(23, 23, MAX_DISTANCE); 
+NewPing rightSonar = NewPing(32, 32, MAX_DISTANCE);
+NewPing leftSonar = NewPing(23, 23, MAX_DISTANCE); 
 //NewPing backSonar = NewPing(25, 25, MAX_DISTANCE); 
 
 #define IRpin 36

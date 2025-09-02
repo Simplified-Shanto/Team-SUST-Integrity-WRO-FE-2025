@@ -15,7 +15,7 @@ double value = 0;      // Stores the difference between the left and right readi
 double error = 0;      // The difference between value and setpoint.
 double lastError = 0;
 double PIDangle = 0; 
-
+double integralError = 0; 
 
 #define parameterCount 6  // Number of configurable parameters
 
@@ -61,7 +61,8 @@ long long pressTime2 = millis();
 long long pressTime1 = millis();
 bool editParameter = 0;
 unsigned short parameterIndex = 0;  // 0  = Speed, 1 = Kp, 2 = Kd
-
+int leftDistance  = 0; 
+int rightDistance = 0; 
 
 
 void loop() {
@@ -69,8 +70,8 @@ void loop() {
     String command = Serial.readStringUntil(';');   
     handleSerialCommand(command); 
   }
-  int leftDistance = leftSonar.ping_cm();
-  int rightDistance = rightSonar.ping_cm();
+  leftDistance = leftSonar.ping_cm();
+  rightDistance = rightSonar.ping_cm();
   if (leftDistance == 0) {
     leftDistance = terminalDistanceThreshold;
   } else if (rightDistance == 0) {
@@ -81,7 +82,6 @@ void loop() {
   value = leftDistance - rightDistance;
   error = value - setPoint;
   // accumulate integral error 
-  static double integralError = 0; 
   integralError+=error; 
 
   // optional: limit integral to prevent windup
@@ -94,6 +94,8 @@ if (integralError < -1000) integralError = -1000;
 PIDangle = error * Kp 
                 + (error - lastError) * Kd 
                 + (integralError * Ki);
+lastError = error;
+
 
   if (editParameter == 1) { configureParameters(); }
   if (gameStarted == 1) {
@@ -182,9 +184,9 @@ void configureParameters()
 {
   display.clearDisplay();
     display.setCursor(0, 0);
-    display.print(rightSonar.ping_cm());
+    display.print(leftDistance);
     display.print(" ");
-    display.print(leftSonar.ping_cm());
+    display.print(rightDistance);
     display.print(" ");
     display.print(int(PIDangle));
     display.println(" deg");

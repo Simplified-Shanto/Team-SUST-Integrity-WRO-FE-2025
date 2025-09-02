@@ -15,6 +15,7 @@ double value = 0;      // Stores the difference between the left and right readi
 double error = 0;      // The difference between value and setpoint.
 double lastError = 0;
 double PIDangle = 0;
+double integralError = 0; 
 
 #define parameterCount 6  // Number of configurable parameters
 
@@ -64,30 +65,39 @@ long long pressTime2 = millis();
 long long pressTime1 = millis();
 bool editParameter = 0;
 unsigned short parameterIndex = 0;  // 0  = Speed, 1 = Kp, 2 = Kd
+int leftDistance = 0; 
+int rightDistance = 0; 
 
 void loop() {
-
   if (Serial.available()) {
     String command = Serial.readStringUntil(';');
     handleSerialCommand(command);
   }
-
-  int leftDistance = leftSonar.ping_cm();
-  int rightDistance = rightSonar.ping_cm();
-
+  leftDistance = leftSonar.ping_cm();
+  rightDistance = rightSonar.ping_cm();
   if (leftDistance == 0) {
     leftDistance = terminalDistanceThreshold;
   } else if (rightDistance == 0) {
     rightDistance = terminalDistanceThreshold;
   }
+
   handleButtonPress();
+
+  integralError+=error; 
+    // optional: limit integral to prevent windup
+  if (integralError > 1000) integralError = 1000;
+  if (integralError < -1000) integralError = -1000;
   //   67         84,             7   -> When the vehicle follows the right wall
   //  -67         7 ,            84   -> When the vehicle follows the left wall
   value = leftDistance - rightDistance;
   error = value - setPoint;
-  PIDangle = error * Kp + (error - lastError) * Kd;
+  
+  PIDangle = error * Kp 
+                + (error - lastError) * Kd 
+                + (integralError * Ki);
   lastError = error;
 
+  
   if (editParameter == 1) { configureParameters(); }
 
   if (gameStarted == 1) {
@@ -200,9 +210,9 @@ void handleSerialCommand(String command) {
 void configureParameters() {
   display.clearDisplay();
   display.setCursor(0, 0);
-  display.print(rightSonar.ping_cm());
+  display.print(leftDistance);
   display.print(" ");
-  display.print(leftSonar.ping_cm());
+  display.print(rightDistance);
   display.print(" ");
   display.print(int(PIDangle));
   display.println(" deg");
@@ -235,13 +245,13 @@ void configureParameters() {
 }
 
 void handleButtonPress() {
-  if (button2Flag == 0 && digitalRead(button2Pin) == LOW) {  //For the time being, we'll stop the second button to stop the car and first button to start the car.
+  if (button2Flag == 0 && digitalRead(button2Pin) == LOW) {  //Detected a press for button2
     button2Flag = 1;
     pressTime2 = millis();
     delay(300);
   }
 
-  if (button2Flag == 1 && digitalRead(button2Pin) == HIGH) {
+  if (button2Flag == 1 && digitalRead(button2Pin) == HIGH) { //Detected the release for button2
     long gap = millis() - pressTime2;
     if (gap < 1000) {
       if (editParameter == 0) {
@@ -276,7 +286,7 @@ void handleButtonPress() {
         }
       }
 
-    } else if (gap > 2000)  // If presstime exceeds 3 second, we'll shutdown the raspi, won't wait for the release
+    } else if (gap > 2000)  
     {
       Serial.write('d');  //Commands the SBC to shutdown
     }
