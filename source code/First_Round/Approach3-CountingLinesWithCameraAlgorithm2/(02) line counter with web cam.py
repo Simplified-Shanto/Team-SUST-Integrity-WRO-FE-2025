@@ -1,11 +1,11 @@
 # --- Configuration ---
 SERIAL_READY = 1 #Whether a serial device is connected or not
 CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam 
-COM_PORT = 3
-MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
+COM_PORT = 4
+MACHINE = 0  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
 #!/usr/bin/env python3
-DEVELOPING   = 0 # The code is in development mode, and we'll show processed images at different stages, 
+DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
 
