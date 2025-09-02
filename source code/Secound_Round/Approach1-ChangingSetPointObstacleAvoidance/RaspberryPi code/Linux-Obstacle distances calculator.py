@@ -3,13 +3,13 @@
 #SBC - Single Board Computer
 # --- Configuration ---
 #!/usr/bin/env python3
-DEVELOPING   = 0 # The code is in development mode, and we'll show processed images at different stages, 
+DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
 FOCAL_LENGTH_PX = 535 #Focal length in pixels - 530 for micropack webcam
 SERIAL_READY = 1 #Whether a serial device is connected or not
 CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam
-MACHINE = 0  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
+MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 COM_PORT = 4
 TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
 
@@ -171,48 +171,48 @@ lineInterval = 0
 stopDelay = 0
 # --- Video Processing Loop ---
 while True:
-    if ser.in_waiting > 0:  # If there's some message from Arduino
-        command = ser.readline().decode('utf-8').strip()  # Read line & strip newline/spaces
-        if DEVELOPING == 1:
-            print("Raw command = ", command)
-        # Case 1: simple one-letter command like 'r' or 'd'
-        if command == "r":   # The lap is starting via button press, so start counting lines
-            line_count = 0
-            if DEVELOPING: print("Lap started (reset line count).")
+        if ser.in_waiting > 0:  # If there's some message from Arduino
+            command = ser.readline().decode('utf-8').strip()  # Read line & strip newline/spaces
+            if DEVELOPING == 1:
+                print("Raw command = ", command)
+            # Case 1: simple one-letter command like 'r' or 'd'
+            if command == "r":   # The lap is starting via button press, so start counting lines
+                line_count = 0
+                if DEVELOPING: print("Lap started (reset line count).")
 
-        elif command == "d" : 
-            if MACHINE==1: #Linux 
-                os.system("sudo shutdown now") # Shutdown immediately
-            elif MACHINE==0: # Windows
-                if SERIAL_READY:
-                    ser.close()
-                break   #Stop execution of the script
-        else:
-            # Case 2: format 'char:value;' (e.g., 'p:1.23;')
-            if ':' in command:
-                try:
-                    constant_name, value_str = command.split(":", 1)
-                    constant_value = float(value_str)
-
-                    if DEVELOPING:
-                        print(f"constant_name = {constant_name}, constant_value = {constant_value}")
-
-                    # Handle based on the constant_name
-                    if constant_name == 'a':
-                        lineInterval = constant_value
-                    elif constant_name == 'b':
-                        stopDelay = constant_value
-                    else:
-                        if DEVELOPING: print("Unknown constant:", constant_name)
-
-                except ValueError:
-                    if DEVELOPING: print("Invalid format received:", command)
-
+            elif command == "d" : 
+                if MACHINE==1: #Linux 
+                    os.system("sudo shutdown now") # Shutdown immediately
+                elif MACHINE==0: # Windows
+                    if SERIAL_READY:
+                        ser.close()
+                    break   #Stop execution of the script
             else:
-                # If it's not in the expected format, treat it as your lineInterval
-                lineInterval = command
-                if DEVELOPING:
-                    print("Line Interval = ", lineInterval)
+                # Case 2: format 'char:value;' (e.g., 'p:1.23;')
+                if ':' in command:
+                    try:
+                        constant_name, value_str = command.split(":", 1)
+                        constant_value = float(value_str)
+
+                        if DEVELOPING:
+                            print(f"constant_name = {constant_name}, constant_value = {constant_value}")
+
+                        # Handle based on the constant_name
+                        if constant_name == 'a':
+                            lineInterval = constant_value
+                        elif constant_name == 'b':
+                            stopDelay = constant_value
+                        else:
+                            if DEVELOPING: print("Unknown constant:", constant_name)
+
+                    except ValueError:
+                        if DEVELOPING: print("Invalid format received:", command)
+
+                else:
+                    # If it's not in the expected format, treat it as your lineInterval
+                    lineInterval = command
+                    if DEVELOPING:
+                        print("Line Interval = ", lineInterval)
 
 
         ret, frame = cap.read()
