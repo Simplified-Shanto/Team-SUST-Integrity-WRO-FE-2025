@@ -6,35 +6,38 @@
 #include "display.h"
 
 Preferences preferences;
-double Kp = 0;
-double Kd = 0;
-int debugPrint = 0;  //Whether we want to print all the variables to the OLED display.
-int turnFlag = 0;
-int turnCount = 0;
-double value = 0;     // Stores the difference between the left and right readings.
-double error = 0;     // The difference between value and setpoint.
-double lastError = 0; 
+double Kp = 0;  //5
+double Kd = 0;  //1
+double Ki = 0;
+int lineInterval = 0;  //time (ms) to wait in the image processing programme between lines counted.
+int stopDelay = 0;     //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
+double value = 0;      // Stores the difference between the left and right readings.
+double error = 0;      // The difference between value and setpoint.
+double lastError = 0;
+double PIDangle = 0;
 
-unsigned int redObstacleDistance = 0; 
-unsigned int greenObstacleDistance = 0; 
+#define parameterCount 6  // Number of configurable parameters
+
+unsigned int redObstacleDistance = 0;
+unsigned int greenObstacleDistance = 0;
 
 double setPoint = 0;  // The amount of difference in reading of the two ultrasonic sensor we want.
 //Above one is the initial setPoint which keeps the vehicle centered in a tunnel
-double dynamicSetPoint = 0; //This setpoint is assigned after determining the run direction 
-int setPointMultiplier = 1; // -1 = round is clockwise 1 = round is anticlockwise
-String piStatus = "Not ready"; // Whether raspberry pie is ready for image processing
+double dynamicSetPoint = 0;  //This setpoint is assigned after determining the run direction
+int setPointMultiplier = 1;  // -1 = round is clockwise 1 = round is anticlockwise
 
-int terminalDistanceThreshold = 80; 
+int terminalDistanceThreshold = 80;
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(115200);
   preferences.begin("wrobot", false);
+  lineInterval = preferences.getInt("lineInterval", 0);
+  stopDelay = preferences.getInt("stopDelay", 0);
   Kp = preferences.getDouble("Kp", 0);
+  Ki = preferences.getDouble("Ki", 0);
   Kd = preferences.getDouble("Kd", 0);
-  debugPrint = preferences.getInt("dP", 0);  //dP = debugPrint
   forwardSpeed = preferences.getInt("speed", 0);
-  dynamicSetPoint = preferences.getDouble("dSetPoint",0); 
+
 
   pinMode(ledPin, OUTPUT);
   pinMode(buttonPin, INPUT_PULLUP);
@@ -52,153 +55,40 @@ void setup() {
   ledcAttachPin(pwmPin, LEDC_CHANNEL);  // Attach the GPIO pin to the LEDC channel
   pinMode(in1Pin, OUTPUT);
   pinMode(in2Pin, OUTPUT);
-
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  display.setTextColor(1);
-  display.setTextSize(1);
-  display.clearDisplay();
+  setupDisplay();
 }
+
+bool button2Flag = 0;
+bool button1Flag = 0;
+long long pressTime2 = millis();
+long long pressTime1 = millis();
+bool editParameter = 0;
+unsigned short parameterIndex = 0;  // 0  = Speed, 1 = Kp, 2 = Kd
 
 void loop() {
 
   if (Serial.available()) {
     String command = Serial.readStringUntil(';');
-    char constant_name = command[0];  //The type of action the remote wants us to take.
-    String constant_value_string = command.substring(2, command.length());
-    // Serial.print("constant_value_string = ");
-    // Serial.println(constant_value_string);
-    float constant_value = constant_value_string.toFloat();
-    // Serial.print("constant value = ");
-    // Serial.println(constant_value); //Though there are more decimal places in the variable,
-    //                                 // the print function only prints upto two decimal places
-    if (command == "x") {  // Commands the car to stop
-      if(gameStarted==1)
-      {
-        gameStarted = 0;
-        goForward(0);
-        steering_servo.write(midAngle);
-      }
-      else
-      {
-        gameStarted = 1; 
-        goForward(forwardSpeed);
-        steering_servo.write(midAngle);
-      }
-    } 
-    else {
-      switch (constant_name) {
-        case 'b': // Blue line is encountered before the orange line in the runtime of the python script -> round is anti-clockwise
-          setPointMultiplier = 1; 
-          changeSetPoint(); //Fix the sign of the setpoint
-          break; 
-        case 'o': // Orange line is encountered before the blue line in the runtie of the python script -> round is clockwise
-          setPointMultiplier = -1; 
-          changeSetPoint(); //Fix the sign of the setpoint
-          break; 
-        case 'p':  //Proportional of PID
-          Kp = constant_value;
-          preferences.putDouble("Kp", Kp);
-          break;
-        case 'd':  //Derivative of PID
-          Kd = constant_value;
-          preferences.putDouble("Kd", Kd);
-          break;
-        case 's':  //Speed of vehicle
-          forwardSpeed = int(constant_value);
-          preferences.putInt("speed", forwardSpeed);
-          break;
-        case 'D':  //Debug print flag
-          debugPrint = int(constant_value);
-          preferences.putInt("dP", debugPrint);
-          display.clearDisplay();
-          display.display();
-          break; 
-        case 'S': //dynamic Setpoint setup
-          dynamicSetPoint = double(constant_value); 
-          terminalDistanceThreshold = dynamicSetPoint; 
-          preferences.putDouble("dSetPoint", dynamicSetPoint);
-          preferences.end();  // Saves variables to EEPROM
-          break; 
-        case 'r': // Raspberry pie is ready for 
-          piStatus = "ready"; 
-        case 'R': //Red obstacle's distance 
-          redObstacleDistance = int(constant_value); // obstacle distance will be 0 when it is beyond the vision range of the vehicle
-          changeSetPoint();
-          break; 
-
-        case 'G': //Green obstacle's distance
-          greenObstacleDistance = int(constant_value); // obstacle distance will be 0 when it is beyond the vision range of the vehicle
-          changeSetPoint();
-          break; 
-
-        default:
-          break;
-      }
-      preferences.end();  // Saves variables to EEPROM
-    }
+    handleSerialCommand(command);
   }
 
-  int frontDistance = middleSonar.ping_cm();
   int leftDistance = leftSonar.ping_cm();
   int rightDistance = rightSonar.ping_cm();
-  int backDistance = backSonar.ping_cm();
 
   if (leftDistance == 0) {
     leftDistance = terminalDistanceThreshold;
   } else if (rightDistance == 0) {
     rightDistance = terminalDistanceThreshold;
   }
-
-  if (digitalRead(button2Pin)==LOW) {  //For the time being, we'll stop the second button to stop the car and first button to start the car. 
-    gameStarted = 0;
-    goForward(0); //Stops the car. 
-    digitalWrite(in1Pin, LOW); 
-    digitalWrite(in2Pin, LOW); 
-    steering_servo.write(midAngle);
-    delay(300); //Debounce delay
-  }
-//   67         84,             7   -> When the vehicle follows the right wall
-//  -67         7 ,            84   -> When the vehicle follows the left wall           
+  handleButtonPress();
+  //   67         84,             7   -> When the vehicle follows the right wall
+  //  -67         7 ,            84   -> When the vehicle follows the left wall
   value = leftDistance - rightDistance;
   error = value - setPoint;
-  // int frontConstant = 40;
-  // double multiplier = (frontConstant - frontDistance) * (frontDistance < 20) * frontProportion;
-  //   if (multiplier == 0) { multiplier = 1; }
-  double PIDangle = error * Kp + (error - lastError) * Kd;
+  PIDangle = error * Kp + (error - lastError) * Kd;
   lastError = error;
 
-
- 
-  if (debugPrint == 1) {
-    display.clearDisplay();
-    display.setCursor(0, 0);
-    display.print(middleSonar.ping_cm());
-    display.print(" ");
-    display.print(rightSonar.ping_cm());
-    display.print(" ");
-    display.print(leftSonar.ping_cm());
-    display.print(" ");
-    display.print(backSonar.ping_cm());
-    display.print(" ");
-    display.print(analogRead(IRpin));
-    display.println();
-    // display.setCursor(0, 30);
-    display.print("ang = ");
-    display.println(int(PIDangle));
-    display.print("Kp:");
-    display.println(Kp);
-    display.print("Kd:");
-    display.println(Kd);
-    display.print("sped = ");
-    display.println(forwardSpeed);
-    display.print("setPoint = ");
-    display.println(setPoint);
-    display.print("tsd = "); 
-    display.println(terminalDistanceThreshold); 
-    display.print("PiStatus = ");  // Whether raspi is ready for image processing. 
-    display.println(piStatus); 
-    display.display();
-  }
+  if (editParameter == 1) { configureParameters(); }
 
   if (gameStarted == 1) {
     int steer_angle = midAngle;
@@ -208,36 +98,269 @@ void loop() {
       steer_angle = midAngle - min(halfAngleRange, abs(PIDangle));
     }
     steering_servo.write(steer_angle);
+  }
+}
+
+////////////////Obstacle Handling//////////////////////////////////////
+void changeSetPoint() {
+  if (redObstacleDistance == 0 && greenObstacleDistance == 0) {
+    setPoint = 0;
+  } else if (redObstacleDistance > greenObstacleDistance) {
+    setPoint = 67 * setPointMultiplier;  //Green obstacle is near the vehicle, so it will try to follow the left wall
+  } else if (redObstacleDistance < greenObstacleDistance) {
+    setPoint = -67 * setPointMultiplier;
+  }
+}
+
+void setupDisplay() {
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display.setTextColor(1);
+  display.setTextSize(1);
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.print("Kp:");
+  display.println(Kp);
+  display.print("Ki:");
+  display.println(Ki);
+  display.print("Kd:");
+  display.println(Kd);
+  display.print("Speed: ");
+  display.println(forwardSpeed);
+  display.print("Line Intv: ");
+  display.println(lineInterval);
+  display.print("stopDel: ");
+  display.println(stopDelay);
+  display.display();
+}
+
+void handleSerialCommand(String command) {
+
+  char constant_name = command[0];  //The type of action the remote wants us to take.
+  String constant_value_string = command.substring(2, command.length());
+  float constant_value = constant_value_string.toFloat();
+
+  if (command == "x") {  // Commands the car to stop
+    gameStarted = 0;
+    steering_servo.write(midAngle);
+    goForward(0);
+  } else if (command == "y") {
+    gameStarted = 1;
+    goForward(forwardSpeed);
   } else {
-    checkButton();
+    switch (constant_name) {
+      case 'r':  // Raspberry pie is ready for
+        Serial.print("a:");
+        Serial.println(lineInterval);
+        Serial.print("b:");
+        Serial.println(stopDelay);
+        delay(500);
+        digitalWrite(ledPin, HIGH);
+        break;
+      case 'b':  // Blue line is encountered before the orange line in the runtime of the python script -> round is anti-clockwise
+        setPointMultiplier = 1;
+        changeSetPoint();  //Fix the sign of the setpoint
+        break;
+      case 'o':  // Orange line is encountered before the blue line in the runtie of the python script -> round is clockwise
+        setPointMultiplier = -1;
+        changeSetPoint();  //Fix the sign of the setpoint
+        break;
+      case 'R':                                     //Red obstacle's distance
+        redObstacleDistance = int(constant_value);  // obstacle distance will be 0 when it is beyond the vision range of the vehicle
+        changeSetPoint();
+        break;
+      case 'G':                                       //Green obstacle's distance
+        greenObstacleDistance = int(constant_value);  // obstacle distance will be 0 when it is beyond the vision range of the vehicle
+        changeSetPoint();
+        break;
+
+      case 'p':  //Proportional of PID
+        Kp = constant_value;
+        preferences.putDouble("Kp", Kp);
+        break;
+      case 'd':  //Derivative of PID
+        Kd = constant_value;
+        preferences.putDouble("Kd", Kd);
+        break;
+      case 's':  //Speed of vehicle
+        forwardSpeed = int(constant_value);
+        preferences.putInt("speed", forwardSpeed);
+        break;
+
+      case 'm':  //MidAngle setup of the steering servo
+        Serial.println(int(constant_value));
+        steering_servo.write(int(constant_value));
+        break;
+
+      default:
+        break;
+    }
   }
 }
 
-  ////////////////Obstacle Handling//////////////////////////////////////
-void changeSetPoint()
-{
-  if(redObstacleDistance==0 && greenObstacleDistance==0) 
-          {
-            setPoint = 0; 
-          }
-          else if(redObstacleDistance > greenObstacleDistance)
-          {
-            setPoint = 67*setPointMultiplier; //Green obstacle is near the vehicle, so it will try to follow the left wall 
-          }
-          else if(redObstacleDistance < greenObstacleDistance)
-          {
-            setPoint = -67*setPointMultiplier;
-          }
+void configureParameters() {
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.print(rightSonar.ping_cm());
+  display.print(" ");
+  display.print(leftSonar.ping_cm());
+  display.print(" ");
+  display.print(int(PIDangle));
+  display.println(" deg");
+  display.print("SPoint:");
+  display.println(setPoint);
+
+  if (editParameter == 1 && parameterIndex == 0) { display.print("> "); }
+  display.print("Speed: ");
+  display.println(forwardSpeed);
+  if (editParameter == 1 && parameterIndex == 1) { display.print("> "); }
+  display.print("Kp:");
+  display.println(Kp);
+  if (editParameter == 1 && parameterIndex == 2) { display.print("> "); }
+  display.print("Ki:");
+  display.println(Ki);
+  if (editParameter == 1 && parameterIndex == 3) { display.print("> "); }
+
+  display.print("Kd:");
+  display.println(Kd);
+  if (editParameter == 1 && parameterIndex == 4) { display.print("> "); }
+  display.print("LineIntv: ");
+  display.println(lineInterval);
+  if (editParameter == 1 && parameterIndex == 5) { display.print("> "); }
+  display.print("StopDel: ");
+  display.println(stopDelay);
+
+
+  display.println();
+  display.display();
 }
 
-void checkButton()
-{ 
-  if (digitalRead(buttonPin) == LOW) {
-  gameStarted = 1; 
-  Serial.print("r"); //Commands the raspberry pie to restart the line order detection process
-  setPoint = 0; //Trying to be in the middle when we don't know the game direction
-  delay(1000); // Waiting for the raspberry
-  goForward(forwardSpeed);
+void handleButtonPress() {
+  if (button2Flag == 0 && digitalRead(button2Pin) == LOW) {  //For the time being, we'll stop the second button to stop the car and first button to start the car.
+    button2Flag = 1;
+    pressTime2 = millis();
+    delay(300);
+  }
+
+  if (button2Flag == 1 && digitalRead(button2Pin) == HIGH) {
+    long gap = millis() - pressTime2;
+    if (gap < 1000) {
+      if (editParameter == 0) {
+        gameStarted = 0;
+        goForward(0);  //Stops the car.
+        digitalWrite(in1Pin, LOW);
+        digitalWrite(in2Pin, LOW);
+        steering_servo.write(midAngle);
+      } else if (editParameter == 1) {
+        switch (parameterIndex) {
+          case 0:
+            forwardSpeed -= (forwardSpeed >= 2) ? 2 : 0;
+            break;
+          case 1:
+            Kp -= 1;
+            break;
+          case 2:
+            Ki -= 0.05;
+            break;
+          case 3:
+            Kd -= 0.05;
+            break;
+          case 4:
+            lineInterval -= 50;
+            break;
+          case 5:
+            stopDelay -= 50;
+            break;
+
+          default:
+            break;
+        }
+      }
+
+    } else if (gap > 2000)  // If presstime exceeds 3 second, we'll shutdown the raspi, won't wait for the release
+    {
+      Serial.write('d');  //Commands the SBC to shutdown
+    }
+    button2Flag = 0;  //Resetting the flag to detect next presses.
+  }
+
+  if (button1Flag == 0 && digitalRead(buttonPin) == LOW)  // We've detected a press in button1
+  {
+    button1Flag = 1;
+    pressTime1 = millis();
+    delay(300);
+  }
+
+  if (button1Flag == 1 && digitalRead(buttonPin) == HIGH)  // We've detected a release, and will take action according to the pressTime.
+  {
+    long gap = millis() - pressTime1;
+    if (gap < 600) {
+      if (editParameter == 0) {
+        if (gameStarted == 0) {
+          gameStarted = 1;
+          Serial.print("r");  //Commands the raspberry pie to restart the line order detection process
+          delay(500);         // Waiting for the raspberry
+          goForward(forwardSpeed);
+        }
+      } else if (editParameter == 1) {
+        switch (parameterIndex) {
+          case 0:
+            forwardSpeed += (forwardSpeed >= 2) ? 2 : 0;
+            break;
+          case 1:
+            Kp += 1;
+            break;
+          case 2:
+            Ki += 0.05;
+            break;
+          case 3:
+            Kd += 0.05;
+            break;
+          case 4:
+            lineInterval += 50;
+            break;
+          case 5:
+            stopDelay += 50;
+            break;
+
+          default:
+            break;
+        }
+      }
+    } else if (gap < 1500) {
+      parameterIndex = (parameterIndex + 1) % parameterCount;
+    } else if (gap < 3000) {
+      if (editParameter == 1) {
+        preferences.putDouble("Kp", Kp);
+        preferences.putDouble("Ki", Ki);
+        preferences.putDouble("Kd", Kd);
+        preferences.putInt("speed", forwardSpeed);
+        preferences.putInt("lineInterval", lineInterval);
+        preferences.putInt("stopDelay", stopDelay);
+        editParameter = 0;
+        // Updates the associated variables in the SBC
+        Serial.print("a:");
+        Serial.println(lineInterval);
+        Serial.print("b:");
+        Serial.println(stopDelay);
+
+        display.clearDisplay();
+        display.setCursor(0, 0);
+        display.print("Speed: ");
+        display.println(forwardSpeed);
+        display.print("Kp:");
+        display.println(Kp);
+        display.print("Kd:");
+        display.println(Kd);
+        display.print("Line Intv: ");
+        display.println(lineInterval);
+        display.print("StopDel: ");
+        display.print(stopDelay);
+
+        display.display();
+      } else if (editParameter == 0) {
+        editParameter = 1;
+      }
+    }
+    button1Flag = 0;
   }
 }
-
