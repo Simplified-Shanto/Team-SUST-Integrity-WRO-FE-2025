@@ -8,18 +8,15 @@ TUNE_HSV = 0 # whether we want to tune the hsv color values for different image 
 DEVELOPING   = 0 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
+
+
 THRESHOLD_AREA = 1000
 lineInterval = 1000 # The interval between counting consecutive lines. 
-
-
 import time
 import cv2
 import numpy as np
 import serial
 import os
-
-
-
 
 
 if SERIAL_READY==1 and MACHINE == 1:
@@ -31,7 +28,6 @@ elif SERIAL_READY==1 and MACHINE ==0:
     ser = serial.Serial(f'COM{COM_PORT}', 115200, timeout = 1.0)
     time.sleep(2)
     ser.reset_input_buffer()
-
 
 # We'll count lines based on the blue line only - because, there's possiblity of overlapping for red and orange line. Later, we may count both lines with their relative order for more precise stopping at the position. 
 # Right now we'll only focus on stopping after completing 3 full laps. 
@@ -45,11 +41,11 @@ blue_upper = np.array([179, 255, 255 ])
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
 
+# # --- Initialize camera ---
 if MACHINE == 0:  # Windows
     cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
 else:             # Linux / Raspberry Pi
     cap = cv2.VideoCapture(CAMERA_INDEX)
-    
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
@@ -79,36 +75,28 @@ if TUNE_HSV==1 and DEVELOPING==1:
 if SERIAL_READY:
     message = 'r;' #Suggests to the esp32 that the raspberry pie is ready for image processing 
     ser.write(message.encode('utf-8'))
-time.sleep(1)  
+    time.sleep(1)  
 
 
 while True:
-    # if ser.in_waiting > 0: # If there's some message from the LLMC
-    #     command = ser.readline().decode('utf-8') 
-    #     if DEVELOPING==1:
-    #         print("command = ", command)
-    #     if(command=="r"): # The lap is starting via button press, so start counting lines
-    #         line_count = 0
-    #     elif command=="d": # Shutdown immediately
-    #         os.system("sudo shutdown now")
-    #     else: 
-    #         lineInterval = command
-    #         if DEVELOPING: 
-    #             print("Line Interval = ", lineInterval)
-
     if ser.in_waiting > 0:  # If there's some message from Arduino
         command = ser.readline().decode('utf-8').strip()  # Read line & strip newline/spaces
-        
         if DEVELOPING == 1:
             print("Raw command = ", command)
-
         # Case 1: simple one-letter command like 'r' or 'd'
         if command == "r":   # The lap is starting via button press, so start counting lines
             line_count = 0
             if DEVELOPING: print("Lap started (reset line count).")
 
-        elif command == "d": # Shutdown immediately
-            os.system("sudo shutdown now")
+        elif command == "d" : 
+            if MACHINE==1: #Linux 
+                os.system("sudo shutdown now") # Shutdown immediately
+            elif MACHINE==0: # Windows
+                if SERIAL_READY:
+                    ser.close()
+                break   #Stop execution of the script
+
+
 
         else:
             # Case 2: format 'char:value;' (e.g., 'p:1.23;')
@@ -137,9 +125,6 @@ while True:
                 if DEVELOPING:
                     print("Line Interval = ", lineInterval)
 
-
-
-        
     current_time = time.time() * 1000
     success, frame = cap.read()
     
