@@ -95,9 +95,6 @@ while True:
                 if SERIAL_READY:
                     ser.close()
                 break   #Stop execution of the script
-
-
-
         else:
             # Case 2: format 'char:value;' (e.g., 'p:1.23;')
             if ':' in command:
