@@ -27,7 +27,7 @@ double setPoint = 0;  // The amount of difference in reading of the two ultrason
 double dynamicSetPoint = 0;  //This setpoint is assigned after determining the run direction
 int setPointMultiplier = 1;  // -1 = round is clockwise 1 = round is anticlockwise
 
-int terminalDistanceThreshold = 80;
+int terminalDistanceThreshold = 200;
 
 void setup() {
   Serial.begin(115200);
@@ -73,8 +73,12 @@ void loop() {
     String command = Serial.readStringUntil(';');
     handleSerialCommand(command);
   }
-  leftDistance = leftSonar.ping_cm();
+
+
   rightDistance = rightSonar.ping_cm();
+  
+  leftDistance = leftSonar.ping_cm();
+
   if (leftDistance == 0) {
     leftDistance = terminalDistanceThreshold;
   } else if (rightDistance == 0) {
