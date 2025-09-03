@@ -70,8 +70,11 @@ void loop() {
     String command = Serial.readStringUntil(';');   
     handleSerialCommand(command); 
   }
-  leftDistance = leftSonar.ping_cm();
+
   rightDistance = rightSonar.ping_cm();
+  delay(7); 
+  leftDistance = leftSonar.ping_cm();
+
   if (leftDistance == 0) {
     leftDistance = terminalDistanceThreshold;
   } else if (rightDistance == 0) {
@@ -110,8 +113,7 @@ lastError = error;
 }
 
 
-void setupDisplay()
-{
+void setupDisplay() {
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   display.setTextColor(1);
   display.setTextSize(1);

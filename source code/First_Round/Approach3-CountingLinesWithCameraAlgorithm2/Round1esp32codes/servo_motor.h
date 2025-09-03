@@ -6,10 +6,11 @@ Servo steering_servo;
 // #define rightAngle 25
 // #define midAngle 70
 // #define leftAngle 115
-double halfAngleRange = 45;
+double halfAngleRange = 65;
+double steeringFreedom =  65; 
 
 
-#define midAngle 76
+#define midAngle 92
 #define leftAngle midAngle - halfAngleRange
 #define rightAngle midAngle + halfAngleRange
 

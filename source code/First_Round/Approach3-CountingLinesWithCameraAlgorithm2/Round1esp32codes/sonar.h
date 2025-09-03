@@ -3,7 +3,7 @@
 // Example NewPing library sketch that pings 3 sensors 20 times a second.
 // ---------------------------------------------------------------------------
 
-#define MAX_DISTANCE 200 // Maximum distance (in cm) to ping.
+#define MAX_DISTANCE 100 // Maximum distance (in cm) to ping.
 #define frontDistanceThreshold 65 //cm
 
 //left = 32
