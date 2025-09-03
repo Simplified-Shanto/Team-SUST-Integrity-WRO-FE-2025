@@ -171,94 +171,93 @@ lineInterval = 0
 stopDelay = 0
 # --- Video Processing Loop ---
 while True:
-        if ser.in_waiting > 0:  # If there's some message from Arduino
-            command = ser.readline().decode('utf-8').strip()  # Read line & strip newline/spaces
-            if DEVELOPING == 1:
-                print("Raw command = ", command)
-            # Case 1: simple one-letter command like 'r' or 'd'
-            if command == "r":   # The lap is starting via button press, so start counting lines
-                line_count = 0
-                if DEVELOPING: print("Lap started (reset line count).")
+    if ser.in_waiting > 0:  # If there's some message from Arduino
+        command = ser.readline().decode('utf-8').strip()  # Read line & strip newline/spaces
+        if DEVELOPING == 1:
+            print("Raw command = ", command)
+        # Case 1: simple one-letter command like 'r' or 'd'
+        if command == "r":   # The lap is starting via button press, so start counting lines
+            line_count = 0
+            if DEVELOPING: print("Lap started (reset line count).")
 
-            elif command == "d" : 
-                if MACHINE==1: #Linux 
-                    os.system("sudo shutdown now") # Shutdown immediately
-                elif MACHINE==0: # Windows
-                    if SERIAL_READY:
-                        ser.close()
-                    break   #Stop execution of the script
+        elif command == "d" : 
+            if MACHINE==1: #Linux 
+                os.system("sudo shutdown now") # Shutdown immediately
+            elif MACHINE==0: # Windows
+                if SERIAL_READY:
+                    ser.close()
+                break   #Stop execution of the script
+        else:
+            # Case 2: format 'char:value;' (e.g., 'p:1.23;')
+            if ':' in command:
+                try:
+                    constant_name, value_str = command.split(":", 1)
+                    constant_value = float(value_str)
+
+                    if DEVELOPING:
+                        print(f"constant_name = {constant_name}, constant_value = {constant_value}")
+
+                    # Handle based on the constant_name
+                    if constant_name == 'a':
+                        lineInterval = constant_value
+                    elif constant_name == 'b':
+                        stopDelay = constant_value
+                    else:
+                        if DEVELOPING: print("Unknown constant:", constant_name)
+
+                except ValueError:
+                    if DEVELOPING: print("Invalid format received:", command)
+
             else:
-                # Case 2: format 'char:value;' (e.g., 'p:1.23;')
-                if ':' in command:
-                    try:
-                        constant_name, value_str = command.split(":", 1)
-                        constant_value = float(value_str)
+                # If it's not in the expected format, treat it as your lineInterval
+                lineInterval = command
+                if DEVELOPING:
+                    print("Line Interval = ", lineInterval)
 
-                        if DEVELOPING:
-                            print(f"constant_name = {constant_name}, constant_value = {constant_value}")
+    ret, frame = cap.read()
+    if not ret:
+        if DEVELOPING:
+            print("Error: Failed to grab frame. Exiting...")
+        break
+    frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    cropped_frame = frame[100:400, 150:590]
+    cropped_hsv   = cv2.cvtColor(cropped_frame, cv2.COLOR_BGR2HSV)
+    blue_line_mask = cv2.inRange(cropped_hsv, blue_line_lower_bound, blue_line_upper_bound)
+    blue_line_masked_frame = cv2.bitwise_and(cropped_frame, cropped_frame, mask = blue_line_mask)
+    
+    orange_line_mask = cv2.inRange(cropped_hsv, orange_line_lower_bound, orange_line_upper_bound)
+    orange_line_masked_frame = cv2.bitwise_and(cropped_frame, cropped_frame, mask = orange_line_mask)
+    combined_line_mask = cv2.bitwise_or(blue_line_masked_frame, orange_line_masked_frame)
 
-                        # Handle based on the constant_name
-                        if constant_name == 'a':
-                            lineInterval = constant_value
-                        elif constant_name == 'b':
-                            stopDelay = constant_value
-                        else:
-                            if DEVELOPING: print("Unknown constant:", constant_name)
+    blue_line_contours, _ = cv2.findContours(blue_line_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    orange_line_contours, _ = cv2.findContours(orange_line_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-                    except ValueError:
-                        if DEVELOPING: print("Invalid format received:", command)
-
-                else:
-                    # If it's not in the expected format, treat it as your lineInterval
-                    lineInterval = command
-                    if DEVELOPING:
-                        print("Line Interval = ", lineInterval)
-
-
-        ret, frame = cap.read()
-        if not ret:
-            if DEVELOPING:
-                print("Error: Failed to grab frame. Exiting...")
-            break
-        frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        cropped_frame = frame[100:400, 150:590]
-        cropped_hsv   = cv2.cvtColor(cropped_frame, cv2.COLOR_BGR2HSV)
-        blue_line_mask = cv2.inRange(cropped_hsv, blue_line_lower_bound, blue_line_upper_bound)
-        blue_line_masked_frame = cv2.bitwise_and(cropped_frame, cropped_frame, mask = blue_line_mask)
-        
-        orange_line_mask = cv2.inRange(cropped_hsv, orange_line_lower_bound, orange_line_upper_bound)
-        orange_line_masked_frame = cv2.bitwise_and(cropped_frame, cropped_frame, mask = orange_line_mask)
-        combined_line_mask = cv2.bitwise_or(blue_line_masked_frame, orange_line_masked_frame)
-
-        blue_line_contours, _ = cv2.findContours(blue_line_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        orange_line_contours, _ = cv2.findContours(orange_line_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        if directionSentFlag == 0: #If we haven't send the round direction to the LLM yet
-            #This basically measures, which color of threshold area do we get first
-            #Checking for blue line
-            for contour_index, contour in enumerate(blue_line_contours): 
-                area = cv2.contourArea(contour)
-                #print("blue = ", area)
-                if cv2.contourArea(contour) > MIN_LINE_AREA:
-                    if SERIAL_READY:
-                        ser.write("b;".encode('utf-8'))
-                    if DEVELOPING:
-                        print("Serial: b;")
-                    directionSentFlag = 1
-                    break
-            #Checking for orange line
-            for cntour_index, contour in enumerate(orange_line_contours): 
-                area = cv2.contourArea(contour)
-                #print("orange = ", area)
-                if area > MIN_LINE_AREA:
-                    if SERIAL_READY:
-                        ser.write("o;".encode('utf-8'))
-                    if DEVELOPING: 
-                        print("Serial: o;")
-                    directionSentFlag = 1
-                    break
-                
+    if directionSentFlag == 0: #If we haven't send the round direction to the LLM yet
+        #This basically measures, which color of threshold area do we get first
+        #Checking for blue line
+        for contour_index, contour in enumerate(blue_line_contours): 
+            area = cv2.contourArea(contour)
+            #print("blue = ", area)
+            if cv2.contourArea(contour) > MIN_LINE_AREA:
+                if SERIAL_READY:
+                    ser.write("b;".encode('utf-8'))
+                if DEVELOPING:
+                    print("Serial: b;")
+                directionSentFlag = 1
+                break
+        #Checking for orange line
+        for cntour_index, contour in enumerate(orange_line_contours): 
+            area = cv2.contourArea(contour)
+            #print("orange = ", area)
+            if area > MIN_LINE_AREA:
+                if SERIAL_READY:
+                    ser.write("o;".encode('utf-8'))
+                if DEVELOPING: 
+                    print("Serial: o;")
+                directionSentFlag = 1
+                break
+            
     # --- Get Trackbar Positions for general HSV tuning ---
     if TUNE_HSV == 1 and DEVELOPING==1:
         g_l_h = cv2.getTrackbarPos("Green L - H", "HSV Trackbars") #g_l_h = green object's lower hue value

@@ -1,9 +1,9 @@
 # --- Configuration ---
 SERIAL_READY = 1 #Whether a serial device is connected or not
-CAM_TYPE = 0 # 0  = Raspcamera, 1  = webcam. 
+CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam. 
 CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam 
 COM_PORT = 4
-MACHINE = 0  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
+MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
 #!/usr/bin/env python3
 DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
@@ -13,7 +13,7 @@ DEVELOPING   = 1 # The code is in development mode, and we'll show processed ima
 
 THRESHOLD_AREA = 1000
 lineInterval = 1000 # The interval between counting consecutive lines. 
-if MACHINE == 0 and CAM_TYPE==0: 
+if MACHINE == 1 and CAM_TYPE==0: 
     from picamera2 import Picamera2
 import time
 import cv2
