@@ -1,5 +1,6 @@
 # --- Configuration ---
 SERIAL_READY = 1 #Whether a serial device is connected or not
+CAM_TYPE = 0 # 0  = Raspcamera, 1  = webcam. 
 CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam 
 COM_PORT = 4
 MACHINE = 0  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
@@ -12,6 +13,8 @@ DEVELOPING   = 1 # The code is in development mode, and we'll show processed ima
 
 THRESHOLD_AREA = 1000
 lineInterval = 1000 # The interval between counting consecutive lines. 
+if MACHINE == 0 and CAM_TYPE==0: 
+    from picamera2 import Picamera2
 import time
 import cv2
 import numpy as np
@@ -43,11 +46,20 @@ FRAME_HEIGHT = 480
 
 # # --- Initialize camera ---
 if MACHINE == 0:  # Windows
-    cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
-else:             # Linux / Raspberry Pi
-    cap = cv2.VideoCapture(CAMERA_INDEX)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
+        cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
+
+elif MACHINE==1:             # Linux / Raspberry Pi
+    if CAM_TYPE==0: # Pi camera 
+        picam2 = Picamera2()
+        config = picam2.create_preview_configuration(main={"size": (640, 480)})
+        picam2.configure(config)
+        picam2.start()
+    elif CAM_TYPE==1:  # USB webcam. 
+        cap = cv2.VideoCapture(CAMERA_INDEX)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
 line_count = -1 # The counting hasn't begun yet. 
 last_time = time.time() * 1000 # Getting the total execution time in millisecond
@@ -123,7 +135,12 @@ while True:
                     print("Line Interval = ", lineInterval)
 
     current_time = time.time() * 1000
-    success, frame = cap.read()
+
+    if CAM_TYPE==1:
+        success, frame = cap.read()
+    elif CAM_TYPE==0: 
+        frame = picam2.capture_array()
+
     
     #frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
     # #cv2.imshow("Original", frame)
