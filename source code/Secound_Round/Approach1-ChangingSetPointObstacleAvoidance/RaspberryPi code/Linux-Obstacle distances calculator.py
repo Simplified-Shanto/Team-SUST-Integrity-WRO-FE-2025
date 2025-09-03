@@ -1,11 +1,14 @@
 #-----Full forms------------------
 #LLMC - Low level microcontroller
 #SBC - Single Board Computer
-# --- Configuration ---
+
 #!/usr/bin/env python3
-DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
+
+# --- Configuration ---
+DEVELOPING   = 0 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
+CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam. 
 FOCAL_LENGTH_PX = 535 #Focal length in pixels - 530 for micropack webcam
 SERIAL_READY = 1 #Whether a serial device is connected or not
 CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam
@@ -18,6 +21,8 @@ FRAME_HEIGHT = 480
 MIN_OBJECT_AREA = 500  # Minimum contour area to consider an object (adjust as needed)
 MIN_LINE_AREA = 500
 
+if MACHINE == 1 and CAM_TYPE==0: 
+    from picamera2 import Picamera2
 import numpy as np
 import cv2
 import serial
@@ -149,11 +154,20 @@ if TUNE_HSV==1 and DEVELOPING==1:
 
 # # --- Initialize camera ---
 if MACHINE == 0:  # Windows
-    cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
-else:             # Linux - Raspberry Pi
-    cap = cv2.VideoCapture(CAMERA_INDEX)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
+        cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
+
+elif MACHINE==1:             # Linux / Raspberry Pi
+    if CAM_TYPE==0: # Pi camera 
+        picam2 = Picamera2()
+        config = picam2.create_preview_configuration(main={"size": (640, 480)})
+        picam2.configure(config)
+        picam2.start()
+    elif CAM_TYPE==1:  # USB webcam. 
+        cap = cv2.VideoCapture(CAMERA_INDEX)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
 if SERIAL_READY: 
     ser.reset_input_buffer()
@@ -214,11 +228,11 @@ while True:
                 if DEVELOPING:
                     print("Line Interval = ", lineInterval)
 
-    ret, frame = cap.read()
-    if not ret:
-        if DEVELOPING:
-            print("Error: Failed to grab frame. Exiting...")
-        break
+    if CAM_TYPE==1:
+        success, frame = cap.read()
+    elif CAM_TYPE==0: 
+        frame = picam2.capture_array()
+
     frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     cropped_frame = frame[100:400, 150:590]

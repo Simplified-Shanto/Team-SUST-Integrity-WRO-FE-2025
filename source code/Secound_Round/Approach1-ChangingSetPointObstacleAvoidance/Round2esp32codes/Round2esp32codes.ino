@@ -119,10 +119,16 @@ void loop() {
 void changeSetPoint() {
   if (redObstacleDistance == 0 && greenObstacleDistance == 0) {
     setPoint = 0;
+    digitalWrite(ledPin, LOW); 
+    digitalWrite(buzzerPin, LOW); 
   } else if (redObstacleDistance > greenObstacleDistance) {
     setPoint = 67 * setPointMultiplier;  //Green obstacle is near the vehicle, so it will try to follow the left wall
+    digitalWrite(ledPin, HIGH); // Indicator for detecting red obstacle. 
+    digitalWrite(buzzerPin, LOW);
   } else if (redObstacleDistance < greenObstacleDistance) {
     setPoint = -67 * setPointMultiplier;
+    digitalWrite(buzzerPin, HIGH); 
+    digitalWrite(ledPin, LOW);
   }
 }
 
@@ -314,6 +320,7 @@ void handleButtonPress() {
           Serial.print("r");  //Commands the raspberry pie to restart the line order detection process
           delay(500);         // Waiting for the raspberry
           goForward(forwardSpeed);
+          digitalWrite(ledPin, LOW); // Turning Off the LED to use it as the high setpoint monitor. 
         }
       } else if (editParameter == 1) {
         switch (parameterIndex) {

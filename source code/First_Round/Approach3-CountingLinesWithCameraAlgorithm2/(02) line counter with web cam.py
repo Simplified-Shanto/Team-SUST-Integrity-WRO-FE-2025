@@ -1,14 +1,20 @@
 # --- Configuration ---
-SERIAL_READY = 1 #Whether a serial device is connected or not
+#-----Full forms------------------
+#LLMC - Low level microcontroller
+#SBC - Single Board Computer
+
+#!/usr/bin/env python3
+
+# --- Configuration ---
+DEVELOPING   = 0 # The code is in development mode, and we'll show processed images at different stages, 
+                 # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
+                 # in raspberry pie. 
 CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam. 
 CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam 
 COM_PORT = 4
 MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
-#!/usr/bin/env python3
-DEVELOPING   = 0 # The code is in development mode, and we'll show processed images at different stages, 
-                 # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
-                 # in raspberry pie. 
+SERIAL_READY = 1 #Whether a serial device is connected or not
 
 
 THRESHOLD_AREA = 1000
