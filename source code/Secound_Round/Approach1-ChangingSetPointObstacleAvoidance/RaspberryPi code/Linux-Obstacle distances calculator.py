@@ -18,7 +18,7 @@ TUNE_HSV = 0 # whether we want to tune the hsv color values for different image 
 
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
-MIN_OBJECT_AREA = 500  # Minimum contour area to consider an object (adjust as needed)
+MIN_OBJECT_AREA = 1000  # Minimum contour area to consider an object (adjust as needed)
 MIN_LINE_AREA = 500
 
 if MACHINE == 1 and CAM_TYPE==0: 
@@ -232,6 +232,7 @@ while True:
         success, frame = cap.read()
     elif CAM_TYPE==0: 
         frame = picam2.capture_array()
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
     frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
