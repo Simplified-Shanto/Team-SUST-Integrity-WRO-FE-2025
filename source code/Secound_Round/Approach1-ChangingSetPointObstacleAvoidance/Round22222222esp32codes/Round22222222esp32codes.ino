@@ -15,9 +15,9 @@ double value = 0;      // Stores the difference between the left and right readi
 double error = 0;      // The difference between value and setpoint.
 double lastError = 0;
 double PIDangle = 0;
-double integralError = 0; 
+double integralError = 0;
 
-#define parameterCount 6  // Number of configurable parameters
+#define parameterCount 8  // Number of configurable parameters
 
 unsigned int redObstacleDistance = 0;
 unsigned int greenObstacleDistance = 0;
@@ -26,8 +26,10 @@ double setPoint = 0;  // The amount of difference in reading of the two ultrason
 //Above one is the initial setPoint which keeps the vehicle centered in a tunnel
 double dynamicSetPoint = 0;  //This setpoint is assigned after determining the run direction
 int setPointMultiplier = 1;  // -1 = round is clockwise 1 = round is anticlockwise
-
 int terminalDistanceThreshold = 200;
+short restrictedSteer = 0;
+short unrestrictedSteer = 0;
+
 
 void setup() {
   Serial.begin(115200);
@@ -38,7 +40,8 @@ void setup() {
   Ki = preferences.getDouble("Ki", 0);
   Kd = preferences.getDouble("Kd", 0);
   forwardSpeed = preferences.getInt("speed", 0);
-
+  restrictedSteer = preferences.getShort("restrictedSteer", 0);
+  unrestrictedSteer = preferences.getShort("unrestrictedSteer", 0);
 
   pinMode(ledPin, OUTPUT);
   pinMode(buttonPin, INPUT_PULLUP);
@@ -65,8 +68,8 @@ long long pressTime2 = millis();
 long long pressTime1 = millis();
 bool editParameter = 0;
 unsigned short parameterIndex = 0;  // 0  = Speed, 1 = Kp, 2 = Kd
-int leftDistance = 0; 
-int rightDistance = 0; 
+int leftDistance = 0;
+int rightDistance = 0;
 
 void loop() {
   if (Serial.available()) {
@@ -76,7 +79,7 @@ void loop() {
 
 
   rightDistance = rightSonar.ping_cm();
-  
+
   leftDistance = leftSonar.ping_cm();
 
   if (leftDistance == 0) {
@@ -87,21 +90,21 @@ void loop() {
 
   handleButtonPress();
 
-  integralError+=error; 
-    // optional: limit integral to prevent windup
+  integralError += error;
+  // optional: limit integral to prevent windup
   if (integralError > 1000) integralError = 1000;
   if (integralError < -1000) integralError = -1000;
   //   67         84,             7   -> When the vehicle follows the right wall
   //  -67         7 ,            84   -> When the vehicle follows the left wall
   value = leftDistance - rightDistance;
   error = value - setPoint;
-  
-  PIDangle = error * Kp 
-                + (error - lastError) * Kd 
-                + (integralError * Ki);
+
+  PIDangle = error * Kp
+             + (error - lastError) * Kd
+             + (integralError * Ki);
   lastError = error;
 
-  
+
   if (editParameter == 1) { configureParameters(); }
 
   if (gameStarted == 1) {
@@ -119,18 +122,18 @@ void loop() {
 void changeSetPoint() {
   if (redObstacleDistance == 0 && greenObstacleDistance == 0) {
     setPoint = 0;
-    halfAngleRange = restrictedSteer; 
-    digitalWrite(ledPin, LOW); 
-    digitalWrite(buzzerPin, LOW); 
+    halfAngleRange = restrictedSteer;
+    digitalWrite(ledPin, LOW);
+    digitalWrite(buzzerPin, LOW);
   } else if (redObstacleDistance > greenObstacleDistance) {
     setPoint = 67 * setPointMultiplier;  //Green obstacle is near the vehicle, so it will try to follow the left wall
-    halfAngleRange = maxSteer; // Increasing steering freedom 
-    digitalWrite(ledPin, HIGH); // Indicator for detecting red obstacle. 
+    halfAngleRange = unrestrictedSteer;  // Increasing steering freedom
+    digitalWrite(ledPin, HIGH);          // Indicator for detecting red obstacle.
     digitalWrite(buzzerPin, LOW);
   } else if (redObstacleDistance < greenObstacleDistance) {
     setPoint = -67 * setPointMultiplier;
-    halfAngleRange = maxSteer; //Increasing steering freedom 
-    digitalWrite(buzzerPin, HIGH); 
+    halfAngleRange = unrestrictedSteer;  //Increasing steering freedom
+    digitalWrite(buzzerPin, HIGH);
     digitalWrite(ledPin, LOW);
   }
 }
@@ -223,35 +226,73 @@ void handleSerialCommand(String command) {
 void configureParameters() {
   display.clearDisplay();
   display.setCursor(0, 0);
-  display.print(leftDistance);
-  display.print(" ");
-  display.print(rightDistance);
-  display.print(" ");
-  display.print(int(PIDangle));
-  display.println(" deg");
-  display.print("SPoint:");
-  display.println(setPoint);
 
-  if (editParameter == 1 && parameterIndex == 0) { display.print("> "); }
-  display.print("Speed: ");
-  display.println(forwardSpeed);
-  if (editParameter == 1 && parameterIndex == 1) { display.print("> "); }
-  display.print("Kp:");
-  display.println(Kp);
-  if (editParameter == 1 && parameterIndex == 2) { display.print("> "); }
-  display.print("Ki:");
-  display.println(Ki);
-  if (editParameter == 1 && parameterIndex == 3) { display.print("> "); }
+  if (parameterIndex <= 2) {
+    display.setCursor(0, 0);
+    display.print(leftDistance);
+    display.print(" ");
+    display.print(rightDistance);
+    display.print(" ");
+    display.print(int(PIDangle));
+    display.println(" deg");
+    display.print("SPoint:");
+    display.println(setPoint);
+  }
+  if (parameterIndex <= 3) {
+    if (editParameter == 1 && parameterIndex == 0) { display.print("> "); }
+    display.print("Speed: ");
+    display.println(forwardSpeed);
+    display.println();
+  }
 
-  display.print("Kd:");
-  display.println(Kd);
-  if (editParameter == 1 && parameterIndex == 4) { display.print("> "); }
-  display.print("LineIntv: ");
-  display.println(lineInterval);
-  if (editParameter == 1 && parameterIndex == 5) { display.print("> "); }
-  display.print("StopDel: ");
-  display.println(stopDelay);
+  if (parameterIndex <= 4) {
+    if (editParameter == 1 && parameterIndex == 1) { display.print("> "); }
+    display.print("Kp:");
+    display.println(Kp);
+    display.println();
+  }
 
+  if (parameterIndex <= 5) {
+    if (editParameter == 1 && parameterIndex == 2) { display.print("> "); }
+    display.print("Ki:");
+    display.println(Ki);
+    display.println();
+  }
+
+  if (parameterIndex <= 6) {
+    if (editParameter == 1 && parameterIndex == 3) { display.print("> "); }
+    display.print("Kd:");
+    display.println(Kd);
+    display.println();
+  }
+
+  if (parameterIndex <= 7) {
+    if (editParameter == 1 && parameterIndex == 4) { display.print("> "); }
+    display.print("LineIntv: ");
+    display.println(lineInterval);
+    display.println();
+  }
+
+  if (parameterIndex <= 8) {
+    if (editParameter == 1 && parameterIndex == 5) { display.print("> "); }
+    display.print("StopDel: ");
+    display.println(stopDelay);
+    display.println();
+  }
+
+  if (parameterIndex <= 9) {
+    if (editParameter == 1 && parameterIndex == 6) { display.print("> "); }
+    display.print("rSteer: ");
+    display.println(restrictedSteer);
+    display.println();
+  }
+
+  if (parameterIndex <= 10) {
+    if (editParameter == 1 && parameterIndex == 7) { display.print("> "); }
+    display.print("urSteer: ");
+    display.println(unrestrictedSteer);
+    display.println();
+  }
 
   display.println();
   display.display();
@@ -264,9 +305,9 @@ void handleButtonPress() {
     delay(300);
   }
 
-  if (button2Flag == 1 && digitalRead(button2Pin) == HIGH) { //Detected the release for button2
+  if (button2Flag == 1 && digitalRead(button2Pin) == HIGH) {  //Detected the release for button2
     long gap = millis() - pressTime2;
-    if (gap < 1000) {
+    if (gap < 500) {
       if (editParameter == 0) {
         gameStarted = 0;
         goForward(0);  //Stops the car.
@@ -291,16 +332,26 @@ void handleButtonPress() {
             lineInterval -= 50;
             break;
           case 5:
-            stopDelay -= 50;
+            stopDelay -= (stopDelay >= 50) ? 50 : 0;
             break;
-
+          case 6:
+            restrictedSteer -= (restrictedSteer > 0) ? 1 : 0;
+            break;
+          case 7:
+            unrestrictedSteer -= (unrestrictedSteer > 0) ? 1 : 0;
+            break;
           default:
             break;
         }
       }
 
-    } else if (gap > 2000)  
+    } else if (gap <= 1500)  // Going one step up in the edit parameter menu
     {
+      parameterIndex--;
+      if (parameterIndex < 0) { parameterIndex = parameterCount - 1; }
+    }
+
+    else if (gap > 2500) {
       Serial.write('d');  //Commands the SBC to shutdown
     }
     button2Flag = 0;  //Resetting the flag to detect next presses.
@@ -316,19 +367,19 @@ void handleButtonPress() {
   if (button1Flag == 1 && digitalRead(buttonPin) == HIGH)  // We've detected a release, and will take action according to the pressTime.
   {
     long gap = millis() - pressTime1;
-    if (gap < 600) {
+    if (gap < 500) {
       if (editParameter == 0) {
         if (gameStarted == 0) {
           gameStarted = 1;
           Serial.print("r");  //Commands the raspberry pie to restart the line order detection process
           delay(500);         // Waiting for the raspberry
           goForward(forwardSpeed);
-          digitalWrite(ledPin, LOW); // Turning Off the LED to use it as the high setpoint monitor. 
+          digitalWrite(ledPin, LOW);  // Turning Off the LED to use it as the high setpoint monitor.
         }
       } else if (editParameter == 1) {
         switch (parameterIndex) {
           case 0:
-            forwardSpeed += (forwardSpeed >= 2) ? 2 : 0;
+            forwardSpeed += 2;
             break;
           case 1:
             Kp += 1;
@@ -345,6 +396,12 @@ void handleButtonPress() {
           case 5:
             stopDelay += 50;
             break;
+          case 6:
+            restrictedSteer += (restrictedSteer < maxSteer) ? 1 : 0;
+            break;
+          case 7:
+            unrestrictedSteer += (unrestrictedSteer < maxSteer) ? 1 : 0;
+            break;
 
           default:
             break;
@@ -354,12 +411,7 @@ void handleButtonPress() {
       parameterIndex = (parameterIndex + 1) % parameterCount;
     } else if (gap < 3000) {
       if (editParameter == 1) {
-        preferences.putDouble("Kp", Kp);
-        preferences.putDouble("Ki", Ki);
-        preferences.putDouble("Kd", Kd);
-        preferences.putInt("speed", forwardSpeed);
-        preferences.putInt("lineInterval", lineInterval);
-        preferences.putInt("stopDelay", stopDelay);
+        saveParameters(); 
         editParameter = 0;
         // Updates the associated variables in the SBC
         Serial.print("a:");
@@ -387,4 +439,17 @@ void handleButtonPress() {
     }
     button1Flag = 0;
   }
+}
+
+
+void saveParameters()
+{
+        preferences.putDouble("Kp", Kp);
+        preferences.putDouble("Ki", Ki);
+        preferences.putDouble("Kd", Kd);
+        preferences.putInt("speed", forwardSpeed);
+        preferences.putInt("lineInterval", lineInterval);
+        preferences.putInt("stopDelay", stopDelay);
+        preferences.putShort("restrictedSteer", restrictedSteer);
+        preferences.putShort("unrestrictedSteer", unrestrictedSteer); 
 }
