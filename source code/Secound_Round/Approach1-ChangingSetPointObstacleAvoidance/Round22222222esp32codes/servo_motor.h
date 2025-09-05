@@ -5,8 +5,10 @@ Servo steering_servo;
 // #define rightAngle 25
 // #define midAngle 70
 // #define leftAngle 115
+
+#define maxSteer 65
+#define restrictedSteer 45
 double halfAngleRange = 45; //Maximum angle it can go from the centre. 
-double steeringFreedom = 65; 
 
 #define midAngle 92
 #define leftAngle midAngle - halfAngleRange

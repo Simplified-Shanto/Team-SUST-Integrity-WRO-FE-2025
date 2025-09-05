@@ -119,14 +119,17 @@ void loop() {
 void changeSetPoint() {
   if (redObstacleDistance == 0 && greenObstacleDistance == 0) {
     setPoint = 0;
+    halfAngleRange = restrictedSteer; 
     digitalWrite(ledPin, LOW); 
     digitalWrite(buzzerPin, LOW); 
   } else if (redObstacleDistance > greenObstacleDistance) {
     setPoint = 67 * setPointMultiplier;  //Green obstacle is near the vehicle, so it will try to follow the left wall
+    halfAngleRange = maxSteer; // Increasing steering freedom 
     digitalWrite(ledPin, HIGH); // Indicator for detecting red obstacle. 
     digitalWrite(buzzerPin, LOW);
   } else if (redObstacleDistance < greenObstacleDistance) {
     setPoint = -67 * setPointMultiplier;
+    halfAngleRange = maxSteer; //Increasing steering freedom 
     digitalWrite(buzzerPin, HIGH); 
     digitalWrite(ledPin, LOW);
   }
