@@ -85,11 +85,11 @@ def estimate_distance(perceived_dimension_px):
     # Define bounds for the general trackbar mask (works fine in bright light condition ) 
 lower_bound_green = np.array([15, 10, 0])
 upper_bound_green = np.array([46, 255, 255])
+1
+lower_bound1_red = np.array([165, 190, 0])
+upper_bound1_red = np.array([179, 255, 255])
 
-lower_bound1_red = np.array([0, 181, 70])
-upper_bound1_red = np.array([5, 255, 255])
-
-lower_bound2_red = np.array([165, 97, 00])
+lower_bound2_red = np.array([165, 190, 00])
 upper_bound2_red = np.array([179, 255, 255])
 
 blue_line_lower_bound = np.array([111, 93 , 00 ])
@@ -283,48 +283,49 @@ while True:
             #This basically measures, which color of threshold area do we get first
             #Checking for blue line
         current_time = time.time()*1000
-
-        for contour_index, contour in enumerate(blue_line_contours): 
-            area = cv2.contourArea(contour)
-            #print("blue = ", area)
-            if area > MIN_LINE_AREA:
-                if(current_time - blue_line_timer > lineInterval):
-                    blue_line_count +=1
-                    blue_line_timer = current_time
-
-                if directionSentFlag == 0:
-                    if SERIAL_READY:
-                        ser.write("b;".encode('utf-8'))
-                    if DEVELOPING:
-                        print("Serial: b;")
-                    directionSentFlag = -1  # Round is anticlockwise
-           
-                    
-        #Checking for orange line
-        for cntour_index, contour in enumerate(orange_line_contours): 
-            area = cv2.contourArea(contour)
-            #print("orange = ", area)
-            if area > MIN_LINE_AREA:
-                if(current_time - orange_line_timer > lineInterval):
-                    orange_line_count +=1
-                    orange_line_timer = current_time
-                if directionSentFlag == 0:
-                    if SERIAL_READY:
-                        ser.write("o;".encode('utf-8'))
-                    if DEVELOPING: 
-                        print("Serial: o;")
-                    directionSentFlag = 1 # Round is clockwise
         
-        # Checking for lap completion 
-        if blue_line_count==12:
-            if DEVELOPING==1: 
-                print("3 laps done. Waiting for RESET command"); 
-            if SERIAL_READY==1: 
-                message = 'x;' #Commands to stop the car. 
-                time.sleep(stopDelay/1000)  # Waiting a bit to reach the center fo the tunnel. 
-                ser.write(message.encode('utf-8'))
-            #time.sleep(1)
-            line_count = -1  # We won't count lines until a new lap is started by pressing the button
+        if blue_line_count!=-1:
+            for contour_index, contour in enumerate(blue_line_contours): 
+                area = cv2.contourArea(contour)
+                #print("blue = ", area)
+                if area > MIN_LINE_AREA:
+                    if(current_time - blue_line_timer > lineInterval):
+                        blue_line_count +=1
+                        blue_line_timer = current_time
+
+                    if directionSentFlag == 0:
+                        if SERIAL_READY:
+                            ser.write("b;".encode('utf-8'))
+                        if DEVELOPING:
+                            print("Serial: b;")
+                        directionSentFlag = -1  # Round is anticlockwise
+               
+                        
+            #Checking for orange line
+            for cntour_index, contour in enumerate(orange_line_contours): 
+                area = cv2.contourArea(contour)
+                #print("orange = ", area)
+                if area > MIN_LINE_AREA:
+                    if(current_time - orange_line_timer > lineInterval):
+                        orange_line_count +=1
+                        orange_line_timer = current_time
+                    if directionSentFlag == 0:
+                        if SERIAL_READY:
+                            ser.write("o;".encode('utf-8'))
+                        if DEVELOPING: 
+                            print("Serial: o;")
+                        directionSentFlag = 1 # Round is clockwise
+            
+            # Checking for lap completion 
+            if orange_line_count==12:
+                if DEVELOPING==1: 
+                    print("3 laps done. Waiting for RESET command"); 
+                if SERIAL_READY==1: 
+                    message = 'x;' #Commands to stop the car. 
+                    time.sleep(stopDelay/1000)  # Waiting a bit to reach the center fo the tunnel. 
+                    ser.write(message.encode('utf-8'))
+                #time.sleep(1)
+                line_count = -1  # We won't count lines until a new lap is started by pressing the button
 
         
 
