@@ -22,6 +22,7 @@ double integralError = 0;
 unsigned int redObstacleDistance = 0;
 unsigned int greenObstacleDistance = 0;
 
+
 double setPoint = 0;  // The amount of difference in reading of the two ultrasonic sensor we want.
 //Above one is the initial setPoint which keeps the vehicle centered in a tunnel
 double dynamicSetPoint = 0;  //This setpoint is assigned after determining the run direction
@@ -41,7 +42,7 @@ void setup() {
   Kd = preferences.getDouble("Kd", 0);
   forwardSpeed = preferences.getInt("speed", 0);
   restrictedSteer = preferences.getShort("restrictedSteer", 0);
-  unrestrictedSteer = preferences.getShort("unrestrictedSteer", 0);
+  unrestrictedSteer = preferences.getShort("urSteer", 0);
 
   pinMode(ledPin, OUTPUT);
   pinMode(buttonPin, INPUT_PULLUP);
@@ -59,7 +60,11 @@ void setup() {
   ledcAttachPin(pwmPin, LEDC_CHANNEL);  // Attach the GPIO pin to the LEDC channel
   pinMode(in1Pin, OUTPUT);
   pinMode(in2Pin, OUTPUT);
-  setupDisplay();
+
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display.setTextColor(1);
+  display.setTextSize(1);
+  showParameters();
 }
 
 bool button2Flag = 0;
@@ -68,8 +73,10 @@ long long pressTime2 = millis();
 long long pressTime1 = millis();
 bool editParameter = 0;
 unsigned short parameterIndex = 0;  // 0  = Speed, 1 = Kp, 2 = Kd
-int leftDistance = 0;
-int rightDistance = 0;
+short leftDistance = 0;
+short rightDistance = 0;
+short frontDistance = 0; 
+
 
 void loop() {
   if (Serial.available()) {
@@ -82,11 +89,39 @@ void loop() {
 
   leftDistance = leftSonar.ping_cm();
 
-  if (leftDistance == 0) {
+  frontDistance = frontSonar.ping_cm();
+
+
+  if(setPoint==0) //There's no obstacle in the vision range. 
+  {
+
+  if (leftDistance == 0 || (leftDistance!=0 && (frontDistance > 0 && frontDistance < 60 ))) {  //Either any sensor feels a long gap, or the vehicle is very close to the wall, take turning action
+                                                                         //Make steering freedom proportional to the frontdistance.
+    if (frontDistance > 0 && frontDistance < 60) {
+      leftDistance = terminalDistanceThreshold;
+    } else {
+      leftDistance = 100 - rightDistance;
+    }
+
+  } else if (rightDistance == 0 || (rightDistance!=0 && (frontDistance > 0 && frontDistance < 60))) {
+
+   if (frontDistance > 0 && frontDistance < 60) {
+      rightDistance = terminalDistanceThreshold;
+    } else {
+      rightDistance = 100 - leftDistance; // If the vehicle is trying to turn from one extreme side of the tunnel, then we'll be turning only when there's a wall ahead, if there's free space, then we'll stop the turning attempt. 
+    }
+
+  }
+  }
+  else //There's some obstacle in the vision range. 
+  {
+      if (leftDistance == 0) {
     leftDistance = terminalDistanceThreshold;
   } else if (rightDistance == 0) {
     rightDistance = terminalDistanceThreshold;
   }
+  }
+
 
   handleButtonPress();
 
@@ -125,6 +160,7 @@ void changeSetPoint() {
     halfAngleRange = restrictedSteer;
     digitalWrite(ledPin, LOW);
     digitalWrite(buzzerPin, LOW);
+    
   } else if (redObstacleDistance > greenObstacleDistance) {
     setPoint = 67 * setPointMultiplier;  //Green obstacle is near the vehicle, so it will try to follow the left wall
     halfAngleRange = unrestrictedSteer;  // Increasing steering freedom
@@ -138,24 +174,28 @@ void changeSetPoint() {
   }
 }
 
-void setupDisplay() {
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  display.setTextColor(1);
-  display.setTextSize(1);
+void showParameters() {
   display.clearDisplay();
   display.setCursor(0, 0);
-  display.print("Kp:");
-  display.println(Kp);
-  display.print("Ki:");
-  display.println(Ki);
-  display.print("Kd:");
+  display.print("P:");
+  display.print(Kp);
+  display.print(" I:");
+  display.print(Ki);
+  display.print(" D:");
   display.println(Kd);
+
   display.print("Speed: ");
   display.println(forwardSpeed);
+  display.print("rSteer: ");
+  display.println(restrictedSteer);
+  display.print("urSteer: ");
+  display.println(unrestrictedSteer);
   display.print("Line Intv: ");
   display.println(lineInterval);
   display.print("stopDel: ");
   display.println(stopDelay);
+
+
   display.display();
 }
 
@@ -166,12 +206,9 @@ void handleSerialCommand(String command) {
   float constant_value = constant_value_string.toFloat();
 
   if (command == "x") {  // Commands the car to stop
-    gameStarted = 0;
-    steering_servo.write(midAngle);
-    goForward(0);
+    stopGame();
   } else if (command == "y") {
-    gameStarted = 1;
-    goForward(forwardSpeed);
+    startGame();
   } else {
     switch (constant_name) {
       case 'r':  // Raspberry pie is ready for
@@ -231,11 +268,13 @@ void configureParameters() {
     display.setCursor(0, 0);
     display.print(leftDistance);
     display.print(" ");
-    display.print(rightDistance);
+    display.print(frontDistance);
     display.print(" ");
+    display.println(rightDistance);
+
+    display.print("A:");
     display.print(int(PIDangle));
-    display.println(" deg");
-    display.print("SPoint:");
+    display.print("* SP:");
     display.println(setPoint);
   }
   if (parameterIndex <= 3) {
@@ -298,6 +337,7 @@ void configureParameters() {
   display.display();
 }
 
+
 void handleButtonPress() {
   if (button2Flag == 0 && digitalRead(button2Pin) == LOW) {  //Detected a press for button2
     button2Flag = 1;
@@ -309,11 +349,7 @@ void handleButtonPress() {
     long gap = millis() - pressTime2;
     if (gap < 500) {
       if (editParameter == 0) {
-        gameStarted = 0;
-        goForward(0);  //Stops the car.
-        digitalWrite(in1Pin, LOW);
-        digitalWrite(in2Pin, LOW);
-        steering_servo.write(midAngle);
+        stopGame();
       } else if (editParameter == 1) {
         switch (parameterIndex) {
           case 0:
@@ -370,11 +406,7 @@ void handleButtonPress() {
     if (gap < 500) {
       if (editParameter == 0) {
         if (gameStarted == 0) {
-          gameStarted = 1;
-          Serial.print("r");  //Commands the raspberry pie to restart the line order detection process
-          delay(500);         // Waiting for the raspberry
-          goForward(forwardSpeed);
-          digitalWrite(ledPin, LOW);  // Turning Off the LED to use it as the high setpoint monitor.
+          startGame();
         }
       } else if (editParameter == 1) {
         switch (parameterIndex) {
@@ -411,28 +443,15 @@ void handleButtonPress() {
       parameterIndex = (parameterIndex + 1) % parameterCount;
     } else if (gap < 3000) {
       if (editParameter == 1) {
-        saveParameters(); 
+        saveParameters();
         editParameter = 0;
         // Updates the associated variables in the SBC
         Serial.print("a:");
         Serial.println(lineInterval);
         Serial.print("b:");
         Serial.println(stopDelay);
+        showParameters();
 
-        display.clearDisplay();
-        display.setCursor(0, 0);
-        display.print("Speed: ");
-        display.println(forwardSpeed);
-        display.print("Kp:");
-        display.println(Kp);
-        display.print("Kd:");
-        display.println(Kd);
-        display.print("Line Intv: ");
-        display.println(lineInterval);
-        display.print("StopDel: ");
-        display.print(stopDelay);
-
-        display.display();
       } else if (editParameter == 0) {
         editParameter = 1;
       }
@@ -442,14 +461,29 @@ void handleButtonPress() {
 }
 
 
-void saveParameters()
-{
-        preferences.putDouble("Kp", Kp);
-        preferences.putDouble("Ki", Ki);
-        preferences.putDouble("Kd", Kd);
-        preferences.putInt("speed", forwardSpeed);
-        preferences.putInt("lineInterval", lineInterval);
-        preferences.putInt("stopDelay", stopDelay);
-        preferences.putShort("restrictedSteer", restrictedSteer);
-        preferences.putShort("unrestrictedSteer", unrestrictedSteer); 
+void saveParameters() {
+  preferences.putDouble("Kp", Kp);
+  preferences.putDouble("Ki", Ki);
+  preferences.putDouble("Kd", Kd);
+  preferences.putInt("speed", forwardSpeed);
+  preferences.putInt("lineInterval", lineInterval);
+  preferences.putInt("stopDelay", stopDelay);
+  preferences.putShort("urSteer", unrestrictedSteer);
+  preferences.putShort("restrictedSteer", restrictedSteer);
+}
+
+void startGame() {
+  gameStarted = 1;
+  Serial.print("r");  //Commands the raspberry pie to restart the line order detection process
+  delay(500);         // Waiting for the raspberry
+  goForward(forwardSpeed);
+  digitalWrite(ledPin, LOW);  // Turning Off the LED to use it as the high setpoint monitor.
+}
+
+void stopGame() {
+  gameStarted = 0;
+  goForward(0);  //Stops the car.
+  digitalWrite(in1Pin, LOW);
+  digitalWrite(in2Pin, LOW);
+  steering_servo.write(midAngle);
 }
