@@ -5,17 +5,17 @@
 #!/usr/bin/env python3
 
 # --- Configuration ---
-DEVELOPING   = 0 # The code is in development mode, and we'll show processed images at different stages, 
+DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
 
-CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam. 
+CAM_TYPE = 1 # 0  = Raspicamera, 1  = webcam. 
 FOCAL_LENGTH_PX = 535 #Focal length in pixels - 530 for micropack webcam
-SERIAL_READY = 1 #Whether a serial device is connected or not
+SERIAL_READY = 0 #Whether a serial device is connected or not
 CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam
-MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
+MACHINE = 0  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 COM_PORT = 4
-TUNE_HSV = 1 # whether we want to tune the hsv color values for different image elements. 
+TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
 
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
@@ -199,21 +199,29 @@ if SERIAL_READY:
 serialFlag = 0      # Whether we've sent the distance of the red obstacle to the LLM 
 serialFlag2 = 0     # Whether we've sent the distance of the green obstacle to the LLM
 directionSentFlag = 0 # Whether we've reported the direction of the round to the LLM
+roundDirection = 0  # 1 = clockwise (orange line comes before blue) -1 = anti-clockwise (blue line comes before orange )
 
-lineInterval = 0
-stopDelay = 0
-line_count = -1
+lineInterval = 1000  # the interval(ms) between counting lines of a particular color. 
+stopDelay = 1000     # time (ms) to wait after counting the last line and stopping the vehicle. 
+
+blue_line_count = -1  # -1 signifies that, line counting hasn't started yet. 
+blue_line_timer = time.time() * 1000 # Getting the total execution time in millisecond
+orange_line_timer = blue_line_timer
+orange_line_count = -1
+
 
 # --- Video Processing Loop ---
 while True:
-    if ser.in_waiting > 0:  # If there's some message from Arduino
+    if SERIAL_READY ==1 and ser.in_waiting > 0:  # If there's some message from Arduino
         command = ser.readline().decode('utf-8').strip()  # Read line & strip newline/spaces
         if DEVELOPING == 1:
             print("Raw command = ", command)
         # Case 1: simple one-letter command like 'r' or 'd'
         if command == "r":   # The lap is starting via button press, so start counting lines
-            line_count = 0
-            if DEVELOPING: print("Lap started (reset line count).")
+            blue_line_count = 0
+            orange_line_count = 0
+            directionSentFlag = 0; 
+            if DEVELOPING: print("Lap started (reset line count and round direction).")
 
         elif command == "d" : 
             if MACHINE==1: #Linux 
@@ -250,7 +258,7 @@ while True:
                     print("Line Interval = ", lineInterval)
 
 
-    if DEVELOPING == 1 or line_count!=-1: # do all the processes, either if we are developing the code, or we are running a lap. 
+    if DEVELOPING == 1 or blue_line_count!=-1: # do all the processes, either if we are developing the code, or we are running a lap. 
         if CAM_TYPE==1:
             success, frame = cap.read()
         elif CAM_TYPE==0: 
@@ -271,30 +279,56 @@ while True:
         blue_line_contours, _ = cv2.findContours(blue_line_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         orange_line_contours, _ = cv2.findContours(orange_line_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        if directionSentFlag == 0: #If we haven't send the round direction to the LLM yet
+         #If we haven't send the round direction to the LLM yet
             #This basically measures, which color of threshold area do we get first
             #Checking for blue line
-            for contour_index, contour in enumerate(blue_line_contours): 
-                area = cv2.contourArea(contour)
-                #print("blue = ", area)
-                if cv2.contourArea(contour) > MIN_LINE_AREA:
+        current_time = time.time()*1000
+
+        for contour_index, contour in enumerate(blue_line_contours): 
+            area = cv2.contourArea(contour)
+            #print("blue = ", area)
+            if area > MIN_LINE_AREA:
+                if(current_time - blue_line_timer > lineInterval):
+                    blue_line_count +=1
+                    blue_line_timer = current_time
+
+                if directionSentFlag == 0:
                     if SERIAL_READY:
                         ser.write("b;".encode('utf-8'))
                     if DEVELOPING:
                         print("Serial: b;")
-                    directionSentFlag = 1
-                    break
-            #Checking for orange line
-            for cntour_index, contour in enumerate(orange_line_contours): 
-                area = cv2.contourArea(contour)
-                #print("orange = ", area)
-                if area > MIN_LINE_AREA:
+                    directionSentFlag = -1  # Round is anticlockwise
+           
+                    
+        #Checking for orange line
+        for cntour_index, contour in enumerate(orange_line_contours): 
+            area = cv2.contourArea(contour)
+            #print("orange = ", area)
+            if area > MIN_LINE_AREA:
+                if(current_time - orange_line_timer > lineInterval):
+                    orange_line_count +=1
+                    orange_line_timer = current_time
+                if directionSentFlag == 0:
                     if SERIAL_READY:
                         ser.write("o;".encode('utf-8'))
                     if DEVELOPING: 
                         print("Serial: o;")
-                    directionSentFlag = 1
-                    break
+                    directionSentFlag = 1 # Round is clockwise
+        
+        # Checking for lap completion 
+        if blue_line_count==12:
+            if DEVELOPING==1: 
+                print("3 laps done. Waiting for RESET command"); 
+            if SERIAL_READY==1: 
+                message = 'x;' #Commands to stop the car. 
+                time.sleep(stopDelay/1000)  # Waiting a bit to reach the center fo the tunnel. 
+                ser.write(message.encode('utf-8'))
+            #time.sleep(1)
+            line_count = -1  # We won't count lines until a new lap is started by pressing the button
+
+        
+
+     
                 
         # --- Get Trackbar Positions for general HSV tuning ---
         if TUNE_HSV == 1 and DEVELOPING==1:
@@ -418,11 +452,18 @@ while True:
                             print("Serial: R:0; ")
                         serialFlag = 1 #We won't send this "No blue object in vision range" continuosly, we'll just send it once
 
-    
-        stackedImages = stackImages(0.6, ([frame, green_masked_frame, red_masked_frame],
+
+        
+        if DEVELOPING:  # Provide visual output of the program 
+            if directionSentFlag==1: 
+                cv2.putText(orange_line_masked_frame, "Clockwise", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 1)
+            elif directionSentFlag==-1: 
+                cv2.putText(blue_line_masked_frame, "Anticlockwise", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 1)
+            cv2.putText(combined_line_mask, f"Blue Lines: {blue_line_count}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (250, 0, 0), 1)
+            cv2.putText(combined_line_mask, f"Orange Lines: {orange_line_count}", (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 1)
+
+            stackedImages = stackImages(0.6, ([frame, green_masked_frame, red_masked_frame],
                                                 [blue_line_masked_frame, orange_line_masked_frame, combined_line_mask]))
-    
-        if DEVELOPING:
             cv2.imshow("Frames", stackedImages)
             key = cv2.waitKey(1)  #Purpose of the above expression: It waits for a speciefied amount of time(in milliseconds) for a key event to occur. This small delay is crucial when processing video streams, as it allows the system to display each frame for a brief period, creating the illusion of continuosu motion. Without this delay, the frames would be processed and displayed so quickly that the video would appear as a blur or not be visible at all. And in most cases, the window will have "Not responding" problem and ultimately crash. During this delay, cv2.waitKey(1) also checks if any key has been pressed. If any key has been prssed. If a key is pressed within the 1-millisecond window, it returns the ascii value fo that pressed key. If no key is pressed within that time, it returns -1. 
             if key == ord('q'): # Stops the execution of the entire python program

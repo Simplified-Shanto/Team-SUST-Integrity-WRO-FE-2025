@@ -167,11 +167,14 @@ while True:
         if (current_time - last_time > lineInterval) and (cv2.contourArea(contour) > THRESHOLD_AREA) and line_count!=-1:
             line_count = line_count + 1
             last_time = current_time
-
-    if line_count==12 and SERIAL_READY==1: 
-        message = 'x;' #Commands to stop the car. 
-        time.sleep(stopDelay/1000)  # Waiting a bit to reach the center fo the tunnel. 
-        ser.write(message.encode('utf-8'))
+    # Checking for lap completion 
+    if line_count==12:
+        if DEVELOPING==1: 
+            print("3 laps done. Waiting for RESET command"); 
+        if SERIAL_READY==1: 
+            message = 'x;' #Commands to stop the car. 
+            time.sleep(stopDelay/1000)  # Waiting a bit to reach the center fo the tunnel. 
+            ser.write(message.encode('utf-8'))
         #time.sleep(1)
         line_count = -1  # We won't count lines until a new lap is started by pressing the button
 
