@@ -92,22 +92,67 @@ void loop() {
   frontDistance = frontSonar.ping_cm();
 
 
-  if(setPoint==0) //There's no obstacle in the vision range. 
-  {
+  // if(setPoint==0) //There's no obstacle in the vision range. (but we should only check it, while considering the frontDistance, and not in other case. )
+  // {
 
-  if (leftDistance == 0 || (leftDistance!=0 && (frontDistance > 0 && frontDistance < 60 ))) {  //Either any sensor feels a long gap, or the vehicle is very close to the wall, take turning action
+  // if (leftDistance == 0 || (leftDistance!=0 && (frontDistance > 0 && frontDistance < 60 ))) {  //Either any sensor feels a long gap, or the vehicle is very close to the wall, take turning action
+  //                                                                        //Make steering freedom proportional to the frontdistance.
+  //   if (frontDistance > 0 && frontDistance < 60) {   //Avoiding taking extra turn when the vehicle has already turned, and is now parallel to the wall. 
+  //     leftDistance = terminalDistanceThreshold;
+  //   } else {  // The vehicle has already turned enough, and is parallel to the wall, which we understand by the front sensor's zero reading, so assume there's a wall on the right side. 
+  //     leftDistance = 100 - rightDistance;
+  //   }
+
+  // } else if (rightDistance == 0 || (rightDistance!=0 && (frontDistance > 0 && frontDistance < 60))) {
+
+  //  if (frontDistance > 0 && frontDistance < 60) {
+  //     rightDistance = terminalDistanceThreshold;
+  //   } else {
+  //     rightDistance = 100 - leftDistance; // If the vehicle is trying to turn from one extreme side of the tunnel, then we'll be turning only when there's a wall ahead, if there's free space, then we'll stop the turning attempt. 
+  //   }
+
+  // }
+  // }
+  // else //There's some obstacle in the vision range. 
+  // {
+  //     if (leftDistance == 0) {
+  //   leftDistance = terminalDistanceThreshold;
+  // } else if (rightDistance == 0) {
+  //   rightDistance = terminalDistanceThreshold;
+  // }
+  // }
+
+/* There's a problem with the following conditioning, if anyhow side sonar fails to be zero when its time to turn, the vehicle will always take left turn. 
+  
+  If we know the round direction, we can disable taking turn in left or right side at corners, reducing the error possibility. 
+  
+  Can we anyhow use the gyro sensor to determine the round direction very reliably?  The car goes parallely for the time being at the starting. 
+
+  Can we anyhow avoid obstacle from the right side, or change setPoint properly without knowing the round direction ? Using any opencv mechanism. 
+
+  For now, since we've the camera facing downward, and detecting lines, we can solfe the counter-clockwise turning problem. 
+
+  The counter-clockwise turning problem is arising from the fact that, the frontDistance condition checking is being true before the side sonar being zero condition is hitting the ground. 
+  We can also try to solve the problem first by reducing the front distance threshold. So we'll be primarily relying on the side sonars for turning and then in any case if it fails, 
+  then the front distance checking will start the turning attempt. With this combine the one side turning only mechanism at corners, and things should work properly. 
+  
+  */
+
+  if(setPoint==0) //There's no obstacle in the vision range. (but we should only check it, while considering the frontDistance, and not in other case. )
+  {
+  if (leftDistance == 0 || (frontDistance > 0 && frontDistance < 60 )) {  //Either any sensor feels a long gap, or the vehicle is very close to the wall, take turning action
                                                                          //Make steering freedom proportional to the frontdistance.
-    if (frontDistance > 0 && frontDistance < 60) {
+    if (frontDistance > 0 && frontDistance < 60) {   //Avoiding taking extra turn when the vehicle has already turned, and is now parallel to the wall. 
       leftDistance = terminalDistanceThreshold;
-    } else {
+    } else {  // The vehicle has already turned enough, and is parallel to the wall, which we understand by the front sensor's zero reading, so assume there's a wall on the right side. 
       leftDistance = 100 - rightDistance;
     }
 
-  } else if (rightDistance == 0 || (rightDistance!=0 && (frontDistance > 0 && frontDistance < 60))) {
+  } else if (rightDistance == 0 || (frontDistance > 0 && frontDistance < 60)) {
 
    if (frontDistance > 0 && frontDistance < 60) {
       rightDistance = terminalDistanceThreshold;
-    } else {
+    } else if(frontDistance==0) {
       rightDistance = 100 - leftDistance; // If the vehicle is trying to turn from one extreme side of the tunnel, then we'll be turning only when there's a wall ahead, if there's free space, then we'll stop the turning attempt. 
     }
 
