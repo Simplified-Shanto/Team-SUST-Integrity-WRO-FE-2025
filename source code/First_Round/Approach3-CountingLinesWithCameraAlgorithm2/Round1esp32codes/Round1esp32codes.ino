@@ -6,22 +6,23 @@
 #include "display.h"
 
 Preferences preferences;
-double Kp = 0;  //5
-double Kd = 0;  //1
-double Ki = 0;
+float Kp = 0;  //5
+float Kd = 0;  //1
+float Ki = 0;
 int lineInterval = 0;  //time (ms) to wait in the image processing programme between lines counted.
 int stopDelay = 0;     //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
-double value = 0;      // Stores the difference between the left and right readings.
-double error = 0;      // The difference between value and setpoint.
-double lastError = 0;
-double PIDangle = 0; 
-double integralError = 0; 
+float value = 0;       // Stores the difference between the left and right readings.
+float error = 0;       // The difference between value and setpoint.
+float lastError = 0;
+float PIDangle = 0;
+float integralError = 0;
+float steerAngle = 0;  // maximum allowed angle change in left or right direction for steering.
 
-#define parameterCount 6  // Number of configurable parameters
+#define parameterCount 7  // Number of configurable parameters
 
-double setPoint = 0;  // The amount of difference in reading of the two ultrasonic sensor we want.
+float setPoint = 0;  // The amount of difference in reading of the two ultrasonic sensor we want.
 //Above one is the initial setPoint which keeps the vehicle centered in a tunnel
-double dynamicSetPoint = 0;  //This setpoint is assigned after determining the run direction
+float dynamicSetPoint = 0;  //This setpoint is assigned after determining the run direction
 
 int terminalDistanceThreshold = 80;
 
@@ -30,10 +31,12 @@ void setup() {
   preferences.begin("wrobot", false);
   lineInterval = preferences.getInt("lineInterval", 0);
   stopDelay = preferences.getInt("stopDelay", 0);
-  Kp = preferences.getDouble("Kp", 0);
-  Ki = preferences.getDouble("Ki", 0);
-  Kd = preferences.getDouble("Kd", 0);
+  Kp = preferences.getFloat("Kp", 0);
+  Ki = preferences.getFloat("Ki", 0);
+  Kd = preferences.getFloat("Kd", 0);
   forwardSpeed = preferences.getInt("speed", 0);
+  steerAngle = preferences.getFloat("steerAngle", 0);
+
 
   pinMode(ledPin, OUTPUT);
   pinMode(buttonPin, INPUT_PULLUP);
@@ -52,7 +55,7 @@ void setup() {
   pinMode(in1Pin, OUTPUT);
   pinMode(in2Pin, OUTPUT);
 
-  setupDisplay(); 
+  setupDisplay();
 }
 
 bool button2Flag = 0;
@@ -61,55 +64,59 @@ long long pressTime2 = millis();
 long long pressTime1 = millis();
 bool editParameter = 0;
 unsigned short parameterIndex = 0;  // 0  = Speed, 1 = Kp, 2 = Kd
-int leftDistance  = 0; 
-int rightDistance = 0; 
+short leftDistance = 0;
+short rightDistance = 0;
+short frontDistance = 0;
 
 
 void loop() {
   if (Serial.available()) {
-    String command = Serial.readStringUntil(';');   
-    handleSerialCommand(command); 
+    String command = Serial.readStringUntil(';');
+    handleSerialCommand(command);
   }
 
   rightDistance = rightSonar.ping_cm();
-  delay(7); 
+
   leftDistance = leftSonar.ping_cm();
 
-  if (leftDistance == 0) {
+  frontDistance = frontSonar.ping_cm();
+
+
+  if (leftDistance == 0 || (leftDistance != 0 && (frontDistance != 0 && frontDistance < frontDistanceThreshold))) {
     leftDistance = terminalDistanceThreshold;
-  } else if (rightDistance == 0) {
+  } else if (rightDistance == 0 || (rightDistance != 0 && (frontDistance != 0 && frontDistance < frontDistanceThreshold))) {
     rightDistance = terminalDistanceThreshold;
   }
-  handleButtonPress(); 
+  handleButtonPress();
 
   value = leftDistance - rightDistance;
   error = value - setPoint;
-  // accumulate integral error 
-  integralError+=error; 
+  // accumulate integral error
+  integralError += error;
 
   // optional: limit integral to prevent windup
-if (integralError > 1000) integralError = 1000;
-if (integralError < -1000) integralError = -1000;
+  if (integralError > 1000) integralError = 1000;
+  if (integralError < -1000) integralError = -1000;
 
   // int frontConstant = 40;
   // double multiplier = (frontConstant - frontDistance) * (frontDistance < 20) * frontProportion;
   //   if (multiplier == 0) { multiplier = 1; }
-PIDangle = error * Kp 
-                + (error - lastError) * Kd 
-                + (integralError * Ki);
-lastError = error;
+  PIDangle = error * Kp
+             + (error - lastError) * Kd
+             + (integralError * Ki);
+  lastError = error;
 
 
   if (editParameter == 1) { configureParameters(); }
   if (gameStarted == 1) {
     int steer_angle = midAngle;
     if (PIDangle > 0) {
-      steer_angle = midAngle - min(halfAngleRange, PIDangle);
+      steer_angle = midAngle - min(steerAngle, PIDangle);
     } else {
-      steer_angle = midAngle + min(halfAngleRange, abs(PIDangle));
+      steer_angle = midAngle + min(steerAngle, abs(PIDangle));
     }
     steering_servo.write(steer_angle);
-  } 
+  }
 }
 
 
@@ -134,57 +141,56 @@ void setupDisplay() {
   display.display();
 }
 
-void handleSerialCommand(String command)
-{
-      char constant_name = command[0];  //The type of action the remote wants us to take.
-      String constant_value_string = command.substring(2, command.length());
-      float constant_value = constant_value_string.toFloat();
+void handleSerialCommand(String command) {
+  char constant_name = command[0];  //The type of action the remote wants us to take.
+  String constant_value_string = command.substring(2, command.length());
+  float constant_value = constant_value_string.toFloat();
 
-   if (command == "x") {  // Commands the car to stop
-      gameStarted = 0;
-      steering_servo.write(midAngle);
-      goForward(0);
-    } else if (command == "y") {
-      gameStarted = 1;
-      goForward(forwardSpeed);
-    } else {
-      switch (constant_name) {
-        case 'p':  //Proportional of PID
-          Kp = constant_value;
-          preferences.putDouble("Kp", Kp);
-          break;
-        case 'd':  //Derivative of PID
-          Kd = constant_value;
-          preferences.putDouble("Kd", Kd);
-          break;
-        case 's':  //Speed of vehicle
-          forwardSpeed = int(constant_value);
-          preferences.putInt("speed", forwardSpeed);
-          break;
+  if (command == "x") {  // Commands the car to stop
+    gameStarted = 0;
+    steering_servo.write(midAngle);
+    goForward(0);
+  } else if (command == "y") {
+    gameStarted = 1;
+    goForward(forwardSpeed);
+  } else {
+    switch (constant_name) {
+      case 'p':  //Proportional of PID
+        Kp = constant_value;
+        preferences.putFloat("Kp", Kp);
+        break;
+      case 'd':  //Derivative of PID
+        Kd = constant_value;
+        preferences.putFloat("Kd", Kd);
+        break;
+      case 's':  //Speed of vehicle
+        forwardSpeed = int(constant_value);
+        preferences.putInt("speed", forwardSpeed);
+        break;
 
-        case 'r':  // Raspberry pie is ready for
-          Serial.print("a:");
-          Serial.println(lineInterval);
-          Serial.print("b:");
-          Serial.println(stopDelay);
-          delay(500);
-          digitalWrite(ledPin, HIGH);
-          break; 
+      case 'r':  // Raspberry pie is ready for
+        Serial.print("a:");
+        Serial.println(lineInterval);
+        Serial.print("b:");
+        Serial.println(stopDelay);
+        delay(500);
+        digitalWrite(ledPin, HIGH);
+        break;
 
-        case 'm': //MidAngle setup of the steering servo 
-          Serial.println(int(constant_value)); 
-          steering_servo.write(int(constant_value)); 
-          break; 
+      case 'm':  //MidAngle setup of the steering servo
+        Serial.println(int(constant_value));
+        steering_servo.write(int(constant_value));
+        break;
 
-        default:
-          break;
-      }
+      default:
+        break;
     }
+  }
 }
 
-void configureParameters()
-{
-  display.clearDisplay();
+void configureParameters() {
+  if (parameterIndex <= 2) {
+    display.clearDisplay();
     display.setCursor(0, 0);
     display.print(leftDistance);
     display.print(" ");
@@ -192,33 +198,64 @@ void configureParameters()
     display.print(" ");
     display.print(int(PIDangle));
     display.println(" deg");
+  }
 
+
+  if (parameterIndex <= 3) {
     if (editParameter == 1 && parameterIndex == 0) { display.print("> "); }
     display.print("Speed: ");
     display.println(forwardSpeed);
+    Serial.println();
+  }
+
+  if (parameterIndex <= 4) {
     if (editParameter == 1 && parameterIndex == 1) { display.print("> "); }
     display.print("Kp:");
     display.println(Kp);
+    Serial.println();
+  }
+
+  if (parameterIndex <= 5) {
     if (editParameter == 1 && parameterIndex == 2) { display.print("> "); }
     display.print("Ki:");
     display.println(Ki);
-    if (editParameter == 1 && parameterIndex == 3) { display.print("> "); }
+    Serial.println();
+  }
 
+  if (parameterIndex <= 6) {
+    if (editParameter == 1 && parameterIndex == 3) { display.print("> "); }
     display.print("Kd:");
     display.println(Kd);
+    Serial.println();
+  }
+
+  if (parameterIndex <= 7) {
     if (editParameter == 1 && parameterIndex == 4) { display.print("> "); }
     display.print("LineIntv: ");
     display.println(lineInterval);
+    Serial.println();
+  }
+
+
+  if (parameterIndex <= 8) {
     if (editParameter == 1 && parameterIndex == 5) { display.print("> "); }
     display.print("StopDel: ");
     display.println(stopDelay);
+    Serial.println();
+  }
 
-    display.println();
-    display.display();
+  if (parameterIndex <= 9) {
+    if (editParameter == 1 && parameterIndex == 6) { display.print("> "); }
+    display.print("SteerA: ");
+    display.println(steerAngle);
+    Serial.println();
+  }
+
+  display.println();
+  display.display();
 }
 
-void handleButtonPress()
-{
+void handleButtonPress() {
   if (button2Flag == 0 && digitalRead(button2Pin) == LOW) {  //For the time being, we'll stop the second button to stop the car and first button to start the car.
     button2Flag = 1;
     pressTime2 = millis();
@@ -227,13 +264,9 @@ void handleButtonPress()
 
   if (button2Flag == 1 && digitalRead(button2Pin) == HIGH) {
     long gap = millis() - pressTime2;
-    if (gap < 1000) {
+    if (gap < 500) {
       if (editParameter == 0) {
-        gameStarted = 0;
-        goForward(0);  //Stops the car.
-        digitalWrite(in1Pin, LOW);
-        digitalWrite(in2Pin, LOW);
-        steering_servo.write(midAngle);
+        stopGame(); 
       } else if (editParameter == 1) {
         switch (parameterIndex) {
           case 0:
@@ -243,8 +276,8 @@ void handleButtonPress()
             Kp -= 1;
             break;
           case 2:
-            Ki-=0.05; 
-            break; 
+            Ki -= 0.05;
+            break;
           case 3:
             Kd -= 0.05;
             break;
@@ -254,13 +287,22 @@ void handleButtonPress()
           case 5:
             stopDelay -= 50;
             break;
-          
+          case 6: 
+            steerAngle-= (steerAngle >=1) ? 1: 0; 
+            break; 
+
           default:
             break;
         }
       }
 
-    } else if (gap > 2000)  // If presstime exceeds 3 second, we'll shutdown the raspi, won't wait for the release
+    }
+    else if (gap <=1500) //Going one step up in the edit parameter menu
+    {
+      parameterIndex--; 
+      if(parameterIndex < 0) { parameterIndex = parameterCount - 1; }
+    }
+     else if (gap > 2500)  // If presstime exceeds 3 second, we'll shutdown the raspi, won't wait for the release
     {
       Serial.write('d');  //Commands the SBC to shutdown
     }
@@ -277,13 +319,10 @@ void handleButtonPress()
   if (button1Flag == 1 && digitalRead(buttonPin) == HIGH)  // We've detected a release, and will take action according to the pressTime.
   {
     long gap = millis() - pressTime1;
-    if (gap < 600) {
+    if (gap < 500) {
       if (editParameter == 0) {
         if (gameStarted == 0) {
-          gameStarted = 1;
-          Serial.print("r");  //Commands the raspberry pie to restart the line order detection process
-          delay(500);         // Waiting for the raspberry
-          goForward(forwardSpeed);
+            startGame(); 
         }
       } else if (editParameter == 1) {
         switch (parameterIndex) {
@@ -294,18 +333,20 @@ void handleButtonPress()
             Kp += 1;
             break;
           case 2:
-            Ki+=0.05; 
-            break; 
+            Ki += 0.05;
+            break;
           case 3:
-            Kd+= 0.05;
+            Kd += 0.05;
             break;
           case 4:
-            lineInterval+= 50;
+            lineInterval += 50;
             break;
           case 5:
-            stopDelay+= 50;
+            stopDelay += 50;
             break;
-
+          case 6: 
+            steerAngle += (steerAngle < maxSteer)? 1: 0; 
+            break; 
           default:
             break;
         }
@@ -314,9 +355,9 @@ void handleButtonPress()
       parameterIndex = (parameterIndex + 1) % parameterCount;
     } else if (gap < 3000) {
       if (editParameter == 1) {
-        preferences.putDouble("Kp", Kp);
-        preferences.putDouble("Ki", Ki); 
-        preferences.putDouble("Kd", Kd);
+        preferences.putFloat("Kp", Kp);
+        preferences.putFloat("Ki", Ki);
+        preferences.putFloat("Kd", Kd);
         preferences.putInt("speed", forwardSpeed);
         preferences.putInt("lineInterval", lineInterval);
         preferences.putInt("stopDelay", stopDelay);
@@ -343,9 +384,26 @@ void handleButtonPress()
         display.display();
       } else if (editParameter == 0) {
         editParameter = 1;
+        stopGame();
       }
     }
     button1Flag = 0;
   }
 }
 
+
+void startGame() {
+  gameStarted = 1;
+  Serial.print("r");  //Commands the raspberry pie to restart the line order detection process
+  delay(500);         // Waiting for the raspberry
+  goForward(forwardSpeed);
+  digitalWrite(ledPin, LOW);  // Turning Off the LED to use it as the high setpoint monitor.
+}
+
+void stopGame() {
+  gameStarted = 0;
+  goForward(0);  //Stops the car.
+  digitalWrite(in1Pin, LOW);
+  digitalWrite(in2Pin, LOW);
+  steering_servo.write(midAngle);
+}

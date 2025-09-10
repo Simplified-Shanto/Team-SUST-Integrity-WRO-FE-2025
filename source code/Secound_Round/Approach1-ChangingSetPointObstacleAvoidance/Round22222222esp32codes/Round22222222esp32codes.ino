@@ -138,23 +138,31 @@ void loop() {
   
   */
 
+  
+
   if(setPoint==0) //There's no obstacle in the vision range. (but we should only check it, while considering the frontDistance, and not in other case. )
   {
-  if (leftDistance == 0 || (frontDistance > 0 && frontDistance < 60 )) {  //Either any sensor feels a long gap, or the vehicle is very close to the wall, take turning action
+  if (leftDistance == 0 || (leftDistance!=0 && (frontDistance > 0 && frontDistance < frontDistanceThreshold ))) {  //Either any sensor feels a long gap, or the vehicle is very close to the wall, take turning action
                                                                          //Make steering freedom proportional to the frontdistance.
-    if (frontDistance > 0 && frontDistance < 60) {   //Avoiding taking extra turn when the vehicle has already turned, and is now parallel to the wall. 
-      leftDistance = terminalDistanceThreshold;
-    } else {  // The vehicle has already turned enough, and is parallel to the wall, which we understand by the front sensor's zero reading, so assume there's a wall on the right side. 
-      leftDistance = 100 - rightDistance;
-    }
+    // if (frontDistance > 0 && frontDistance < 60) {   //Avoiding taking extra turn when the vehicle has already turned, and is now parallel to the wall. 
+    //   leftDistance = terminalDistanceThreshold;
+    // } else {  // The vehicle has already turned enough, and is parallel to the wall, which we understand by the front sensor's zero reading, so assume there's a wall on the right side. 
+    //   leftDistance = 100 - rightDistance;
+    // }
+    leftDistance = terminalDistanceThreshold; 
 
-  } else if (rightDistance == 0 || (frontDistance > 0 && frontDistance < 60)) {
+  } else 
 
-   if (frontDistance > 0 && frontDistance < 60) {
+//Either right sensor has detected no-wall (so reading zero )   or     (It has failed to detect that no wall/empty space and not returning zero      and     the front sensor has detected the wall hitting very soon.   
+  if (    rightDistance == 0                                    ||    (rightDistance!=0                                                              &&     (frontDistance > 0 && frontDistance < frontDistanceThreshold))) {
+
+  //  if (frontDistance > 0 && frontDistance < 60) {
+  //     rightDistance = terminalDistanceThreshold;
+  //   } else if(frontDistance==0) {
+  //     rightDistance = 100 - leftDistance; // If the vehicle is trying to turn from one extreme side of the tunnel, then we'll be turning only when there's a wall ahead, if there's free space, then we'll stop the turning attempt. 
+  //   }
+
       rightDistance = terminalDistanceThreshold;
-    } else if(frontDistance==0) {
-      rightDistance = 100 - leftDistance; // If the vehicle is trying to turn from one extreme side of the tunnel, then we'll be turning only when there's a wall ahead, if there's free space, then we'll stop the turning attempt. 
-    }
 
   }
   }
@@ -190,9 +198,9 @@ void loop() {
   if (gameStarted == 1) {
     int steer_angle = midAngle;
     if (PIDangle > 0) {
-      steer_angle = midAngle + min(halfAngleRange, PIDangle);
+      steer_angle = midAngle - min(halfAngleRange, PIDangle);
     } else {
-      steer_angle = midAngle - min(halfAngleRange, abs(PIDangle));
+      steer_angle = midAngle + min(halfAngleRange, abs(PIDangle));
     }
     steering_servo.write(steer_angle);
   }
