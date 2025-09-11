@@ -5,18 +5,20 @@
 #include "sonar.h"
 #include "display.h"
 
+//Tested parameter values1: Speed: 150,160, 170  Kp: 3, Kd: 0.3 , Ki = 0, steerAngle = 40 
+
 Preferences preferences;
-float Kp = 0;  //5
-float Kd = 0;  //1
+float Kp = 4;  //4
+float Kd = 0.4;  //0.3
 float Ki = 0;
-int lineInterval = 0;  //time (ms) to wait in the image processing programme between lines counted.
-int stopDelay = 0;     //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
+int lineInterval = 500;  //time (ms) to wait in the image processing programme between lines counted.
+int stopDelay = 1000;     //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
 float value = 0;       // Stores the difference between the left and right readings.
 float error = 0;       // The difference between value and setpoint.
 float lastError = 0;
 float PIDangle = 0;
 float integralError = 0;
-float steerAngle = 0;  // maximum allowed angle change in left or right direction for steering.
+float steerAngle = 40;  // maximum allowed angle change in left or right direction for steering.
 
 #define parameterCount 7  // Number of configurable parameters
 
@@ -29,13 +31,14 @@ int terminalDistanceThreshold = 80;
 void setup() {
   Serial.begin(115200);
   preferences.begin("wrobot", false);
-  lineInterval = preferences.getInt("lineInterval", 0);
-  stopDelay = preferences.getInt("stopDelay", 0);
-  Kp = preferences.getFloat("Kp", 0);
-  Ki = preferences.getFloat("Ki", 0);
-  Kd = preferences.getFloat("Kd", 0);
-  forwardSpeed = preferences.getInt("speed", 0);
-  steerAngle = preferences.getFloat("steerAngle", 0);
+  //preferences.clear(); //Only uncomment it when you have the second round code uploaded currently. Upload this code. Then comment this line again in the further upload of this same code. 
+  lineInterval = preferences.getInt("lineInterval", lineInterval);
+  stopDelay = preferences.getInt("stopDelay", stopDelay);
+  Kp = preferences.getFloat("Kp", Kp);
+  Ki = preferences.getFloat("Ki", Ki);
+  Kd = preferences.getFloat("Kd", Kd);
+  forwardSpeed = preferences.getInt("speed", forwardSpeed);
+  steerAngle = preferences.getFloat("steerAngle", steerAngle);
 
 
   pinMode(ledPin, OUTPUT);
@@ -63,7 +66,7 @@ bool button1Flag = 0;
 long long pressTime2 = millis();
 long long pressTime1 = millis();
 bool editParameter = 0;
-unsigned short parameterIndex = 0;  // 0  = Speed, 1 = Kp, 2 = Kd
+short parameterIndex = 0;  // 0  = Speed, 1 = Kp, 2 = Kd
 short leftDistance = 0;
 short rightDistance = 0;
 short frontDistance = 0;
@@ -138,6 +141,8 @@ void setupDisplay() {
   display.println(lineInterval);
   display.print("stopDel: ");
   display.println(stopDelay);
+  display.print("steerA: ");
+  display.println(steerAngle);
   display.display();
 }
 
@@ -189,15 +194,22 @@ void handleSerialCommand(String command) {
 }
 
 void configureParameters() {
+  display.clearDisplay();
+  display.setCursor(0, 0);
+
   if (parameterIndex <= 2) {
     display.clearDisplay();
     display.setCursor(0, 0);
+    display.print("L:");
     display.print(leftDistance);
-    display.print(" ");
-    display.print(rightDistance);
-    display.print(" ");
+    display.print(" F:");
+    display.print(frontDistance); 
+    display.print(" R:");
+    display.println(rightDistance);
+    display.print("A: ");
     display.print(int(PIDangle));
     display.println(" deg");
+    display.println(); 
   }
 
 
@@ -205,35 +217,35 @@ void configureParameters() {
     if (editParameter == 1 && parameterIndex == 0) { display.print("> "); }
     display.print("Speed: ");
     display.println(forwardSpeed);
-    Serial.println();
+    display.println();
   }
 
   if (parameterIndex <= 4) {
     if (editParameter == 1 && parameterIndex == 1) { display.print("> "); }
     display.print("Kp:");
     display.println(Kp);
-    Serial.println();
+    display.println();
   }
 
   if (parameterIndex <= 5) {
     if (editParameter == 1 && parameterIndex == 2) { display.print("> "); }
     display.print("Ki:");
     display.println(Ki);
-    Serial.println();
+    display.println();
   }
 
   if (parameterIndex <= 6) {
     if (editParameter == 1 && parameterIndex == 3) { display.print("> "); }
     display.print("Kd:");
     display.println(Kd);
-    Serial.println();
+    display.println();
   }
 
   if (parameterIndex <= 7) {
     if (editParameter == 1 && parameterIndex == 4) { display.print("> "); }
     display.print("LineIntv: ");
     display.println(lineInterval);
-    Serial.println();
+    display.println();
   }
 
 
@@ -241,14 +253,14 @@ void configureParameters() {
     if (editParameter == 1 && parameterIndex == 5) { display.print("> "); }
     display.print("StopDel: ");
     display.println(stopDelay);
-    Serial.println();
+    display.println();
   }
 
   if (parameterIndex <= 9) {
     if (editParameter == 1 && parameterIndex == 6) { display.print("> "); }
     display.print("SteerA: ");
     display.println(steerAngle);
-    Serial.println();
+    display.println();
   }
 
   display.println();
@@ -266,14 +278,14 @@ void handleButtonPress() {
     long gap = millis() - pressTime2;
     if (gap < 500) {
       if (editParameter == 0) {
-        stopGame(); 
+        stopGame();
       } else if (editParameter == 1) {
         switch (parameterIndex) {
           case 0:
             forwardSpeed -= (forwardSpeed >= 2) ? 2 : 0;
             break;
           case 1:
-            Kp -= 1;
+            Kp -= 0.5;
             break;
           case 2:
             Ki -= 0.05;
@@ -287,22 +299,21 @@ void handleButtonPress() {
           case 5:
             stopDelay -= 50;
             break;
-          case 6: 
-            steerAngle-= (steerAngle >=1) ? 1: 0; 
-            break; 
+          case 6:
+            steerAngle -= (steerAngle >= 1) ? 1 : 0;
+            break;
 
           default:
             break;
         }
       }
 
-    }
-    else if (gap <=1500) //Going one step up in the edit parameter menu
+    } else if (gap <= 1500)  //Going one step up in the edit parameter menu
     {
-      parameterIndex--; 
-      if(parameterIndex < 0) { parameterIndex = parameterCount - 1; }
-    }
-     else if (gap > 2500)  // If presstime exceeds 3 second, we'll shutdown the raspi, won't wait for the release
+      parameterIndex--;
+      if (parameterIndex < 0) { parameterIndex = parameterCount - 1;
+       }
+    } else if (gap > 2500)  // If presstime exceeds 3 second, we'll shutdown the raspi, won't wait for the release
     {
       Serial.write('d');  //Commands the SBC to shutdown
     }
@@ -322,7 +333,7 @@ void handleButtonPress() {
     if (gap < 500) {
       if (editParameter == 0) {
         if (gameStarted == 0) {
-            startGame(); 
+          startGame();
         }
       } else if (editParameter == 1) {
         switch (parameterIndex) {
@@ -330,7 +341,7 @@ void handleButtonPress() {
             forwardSpeed += (forwardSpeed >= 2) ? 2 : 0;
             break;
           case 1:
-            Kp += 1;
+            Kp += 0.5;
             break;
           case 2:
             Ki += 0.05;
@@ -344,9 +355,9 @@ void handleButtonPress() {
           case 5:
             stopDelay += 50;
             break;
-          case 6: 
-            steerAngle += (steerAngle < maxSteer)? 1: 0; 
-            break; 
+          case 6:
+            steerAngle += (steerAngle < maxSteer) ? 1 : 0;
+            break;
           default:
             break;
         }
@@ -361,6 +372,7 @@ void handleButtonPress() {
         preferences.putInt("speed", forwardSpeed);
         preferences.putInt("lineInterval", lineInterval);
         preferences.putInt("stopDelay", stopDelay);
+        preferences.putFloat("steerAngle", steerAngle); 
         editParameter = 0;
         // Updates the associated variables in the SBC
         Serial.print("a:");
@@ -374,12 +386,16 @@ void handleButtonPress() {
         display.println(forwardSpeed);
         display.print("Kp:");
         display.println(Kp);
+        display.print("Ki:"); 
+        display.println(Ki); 
         display.print("Kd:");
         display.println(Kd);
         display.print("Line Intv: ");
         display.println(lineInterval);
         display.print("StopDel: ");
-        display.print(stopDelay);
+        display.println(stopDelay);
+        display.print("SteerA: "); 
+        display.println(steerAngle); 
 
         display.display();
       } else if (editParameter == 0) {

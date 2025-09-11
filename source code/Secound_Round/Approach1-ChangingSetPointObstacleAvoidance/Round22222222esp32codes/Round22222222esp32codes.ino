@@ -6,11 +6,11 @@
 #include "display.h"
 
 Preferences preferences;
-double Kp = 0;  //5
-double Kd = 0;  //1
+double Kp = 3;  //5
+double Kd = 0.3;  //1
 double Ki = 0;
-int lineInterval = 0;  //time (ms) to wait in the image processing programme between lines counted.
-int stopDelay = 0;     //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
+int lineInterval = 1000;  //time (ms) to wait in the image processing programme between lines counted.
+int stopDelay = 1000;     //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
 double value = 0;      // Stores the difference between the left and right readings.
 double error = 0;      // The difference between value and setpoint.
 double lastError = 0;
@@ -28,21 +28,22 @@ double setPoint = 0;  // The amount of difference in reading of the two ultrason
 double dynamicSetPoint = 0;  //This setpoint is assigned after determining the run direction
 int setPointMultiplier = 1;  // -1 = round is clockwise 1 = round is anticlockwise
 int terminalDistanceThreshold = 200;
-short restrictedSteer = 0;
-short unrestrictedSteer = 0;
+short restrictedSteer = 35;
+short unrestrictedSteer = 45;
 
 
 void setup() {
   Serial.begin(115200);
   preferences.begin("wrobot", false);
-  lineInterval = preferences.getInt("lineInterval", 0);
-  stopDelay = preferences.getInt("stopDelay", 0);
-  Kp = preferences.getDouble("Kp", 0);
-  Ki = preferences.getDouble("Ki", 0);
-  Kd = preferences.getDouble("Kd", 0);
-  forwardSpeed = preferences.getInt("speed", 0);
-  restrictedSteer = preferences.getShort("restrictedSteer", 0);
-  unrestrictedSteer = preferences.getShort("urSteer", 0);
+  preferences.clear();   //Only uncomment it when you have the first round code uploaded currently. Upload this code. Then comment this line again. 
+  lineInterval = preferences.getInt("lineInterval", lineInterval);
+  stopDelay = preferences.getInt("stopDelay", stopDelay);
+  Kp = preferences.getDouble("Kp", Kp);
+  Ki = preferences.getDouble("Ki", Ki);
+  Kd = preferences.getDouble("Kd", Kd);
+  forwardSpeed = preferences.getInt("speed", forwardSpeed);
+  restrictedSteer = preferences.getShort("restrictedSteer", restrictedSteer);
+  unrestrictedSteer = preferences.getShort("urSteer", unrestrictedSteer);
 
   pinMode(ledPin, OUTPUT);
   pinMode(buttonPin, INPUT_PULLUP);
@@ -72,7 +73,7 @@ bool button1Flag = 0;
 long long pressTime2 = millis();
 long long pressTime1 = millis();
 bool editParameter = 0;
-unsigned short parameterIndex = 0;  // 0  = Speed, 1 = Kp, 2 = Kd
+short parameterIndex = 0;  // 0  = Speed, 1 = Kp, 2 = Kd
 short leftDistance = 0;
 short rightDistance = 0;
 short frontDistance = 0; 
@@ -319,10 +320,11 @@ void configureParameters() {
 
   if (parameterIndex <= 2) {
     display.setCursor(0, 0);
+    display.print("L:");
     display.print(leftDistance);
-    display.print(" ");
-    display.print(frontDistance);
-    display.print(" ");
+    display.print(" F:");
+    display.print(frontDistance); 
+    display.print(" R:");
     display.println(rightDistance);
 
     display.print("A:");
@@ -409,7 +411,7 @@ void handleButtonPress() {
             forwardSpeed -= (forwardSpeed >= 2) ? 2 : 0;
             break;
           case 1:
-            Kp -= 1;
+            Kp -= 0.5;
             break;
           case 2:
             Ki -= 0.05;
@@ -467,7 +469,7 @@ void handleButtonPress() {
             forwardSpeed += 2;
             break;
           case 1:
-            Kp += 1;
+            Kp +=0.5;
             break;
           case 2:
             Ki += 0.05;
