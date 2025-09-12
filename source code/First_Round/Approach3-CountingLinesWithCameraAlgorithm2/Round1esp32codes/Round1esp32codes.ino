@@ -5,22 +5,25 @@
 #include "sonar.h"
 #include "display.h"
 
-//Tested parameter values1: Speed: 150,160, 170  Kp: 3, Kd: 0.3 , Ki = 0, steerAngle = 40 
+//Tested parameter values1: Speed: 150,160, 170  Kp: 3, Kd: 0.3 , Ki = 0, steerAngle = 40
 
 Preferences preferences;
-float Kp = 4;  //4
-float Kd = 0.4;  //0.3
+float Kp = 3;    //4
+float Kd = 0.3;  //0.3
 float Ki = 0;
 int lineInterval = 500;  //time (ms) to wait in the image processing programme between lines counted.
-int stopDelay = 1000;     //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
-float value = 0;       // Stores the difference between the left and right readings.
-float error = 0;       // The difference between value and setpoint.
+int stopDelay = 1000;    //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
+float value = 0;         // Stores the difference between the left and right readings.
+float error = 0;         // The difference between value and setpoint.
 float lastError = 0;
 float PIDangle = 0;
 float integralError = 0;
-float steerAngle = 40;  // maximum allowed angle change in left or right direction for steering.
+float restrictedSteer = 40;  // maximum allowed angle change in left or right direction for steering.
+float unrestrictedSteer = 50;
+short steerAngle = restrictedSteer;
 
-#define parameterCount 7  // Number of configurable parameters
+
+#define parameterCount 9  // Number of parameters to display, configure or both.
 
 float setPoint = 0;  // The amount of difference in reading of the two ultrasonic sensor we want.
 //Above one is the initial setPoint which keeps the vehicle centered in a tunnel
@@ -31,14 +34,15 @@ int terminalDistanceThreshold = 80;
 void setup() {
   Serial.begin(115200);
   preferences.begin("wrobot", false);
-  //preferences.clear(); //Only uncomment it when you have the second round code uploaded currently. Upload this code. Then comment this line again in the further upload of this same code. 
+  //preferences.clear(); //Only uncomment it when you have the second round code uploaded currently. Upload this code. Then comment this line again in the further upload of this same code.
   lineInterval = preferences.getInt("lineInterval", lineInterval);
   stopDelay = preferences.getInt("stopDelay", stopDelay);
   Kp = preferences.getFloat("Kp", Kp);
   Ki = preferences.getFloat("Ki", Ki);
   Kd = preferences.getFloat("Kd", Kd);
   forwardSpeed = preferences.getInt("speed", forwardSpeed);
-  steerAngle = preferences.getFloat("steerAngle", steerAngle);
+  restrictedSteer = preferences.getFloat("rSteer", restrictedSteer);
+  unrestrictedSteer = preferences.getFloat("urSteer", unrestrictedSteer);
 
 
   pinMode(ledPin, OUTPUT);
@@ -70,7 +74,7 @@ short parameterIndex = 0;  // 0  = Speed, 1 = Kp, 2 = Kd
 short leftDistance = 0;
 short rightDistance = 0;
 short frontDistance = 0;
-
+bool roundDirection = 0;  // 0 = clockwise 1 = ccw
 
 void loop() {
   if (Serial.available()) {
@@ -79,17 +83,101 @@ void loop() {
   }
 
   rightDistance = rightSonar.ping_cm();
+  //delay(sonarReadingDelay);
 
   leftDistance = leftSonar.ping_cm();
+  //delay(sonarReadingDelay);
 
   frontDistance = frontSonar.ping_cm();
+  //delay(sonarReadingDelay);
+
+  // //Mechanism 0:
+  // if (rightDistance==0) { rightDistance== terminalDistanceThreshold; }
+  // else if(leftDistance==0) { leftDistance = terminalDistanceThreshold; }
 
 
-  if (leftDistance == 0 || (leftDistance != 0 && (frontDistance != 0 && frontDistance < frontDistanceThreshold))) {
-    leftDistance = terminalDistanceThreshold;
-  } else if (rightDistance == 0 || (rightDistance != 0 && (frontDistance != 0 && frontDistance < frontDistanceThreshold))) {
-    rightDistance = terminalDistanceThreshold;
+  //Mechanism 1:  The following mechanism fails in the case where's there an extension in the center boundry, and the vehicle takes turn when near the outerboarder, the front distance threshold gets true and takes turn in
+  // first condition mentioned below.
+
+  //  if (rightDistance == 0 || (rightDistance != 0 && (frontDistance != 0 && frontDistance < frontDistanceThreshold))) {
+  //   rightDistance = terminalDistanceThreshold;
+  // }
+  // else if (leftDistance == 0 || (leftDistance != 0 && (frontDistance != 0 && frontDistance < frontDistanceThreshold))) {
+  //   leftDistance = terminalDistanceThreshold;
+  // }
+
+  //Mechanism 2:
+
+  if (rightDistance == 0 || leftDistance == 0 || (frontDistance != 0 && frontDistance < frontDistanceThreshold))  //Take a turning action on any of these events.
+  {
+    steerAngle = unrestrictedSteer;
+    if (rightDistance == 0 && leftDistance != 0)  // 1 0
+    {
+      rightDistance = terminalDistanceThreshold;
+      digitalWrite(buzzerPin, LOW);
+      digitalWrite(ledPin, LOW);
+    } else if (leftDistance == 0 && rightDistance != 0)  //0 1
+    {
+      leftDistance = terminalDistanceThreshold;
+      digitalWrite(buzzerPin, LOW);
+      digitalWrite(ledPin, LOW);
+    } else if (leftDistance != 0 && rightDistance != 0)  //1 1
+    {
+      if (leftDistance > rightDistance) {
+        leftDistance = terminalDistanceThreshold;
+      } else if (rightDistance > leftDistance) {
+        rightDistance = terminalDistanceThreshold;
+      }
+      digitalWrite(ledPin, HIGH);
+      digitalWrite(buzzerPin, LOW);
+    } else if (leftDistance == 0 && rightDistance == 0) { //0 0 Both sonar sensor is reading zero, so we are resorting to the round direction for taking turns. 
+      if (gameStarted == 1) {
+        digitalWrite(buzzerPin, HIGH);
+      }
+      if (roundDirection == 0) {  //cw round
+        rightDistance = terminalDistanceThreshold;
+      }
+    } else {  //ccw round
+      leftDistance = terminalDistanceThreshold;
+    }
+  } else {
+    steerAngle = restrictedSteer;
   }
+
+  // 0 0 - If anyhow both left and right side senor reads zero, then we'll do nothing, just register such events with a buzzer beep. the vehicle will go straight.
+  // Here's a few choice we have at our hand now
+  // 0. Increase sonar sensor reading range, to avoid such mishap
+  //    Sonar range = 100;   Frequent mishap
+  //    Sonar range = 120;   Still both sensor gets zero at the narrow tunnel entry, but they were for very shortperiod
+  //                         and unable to distract the vehicle.
+  //    Sonar range = 130;   Detected significantly in the ccw turn in the extended tunnel entry point
+  //                         Peforms decent in high speed runs with short period of both sensor 0 reading detecting at the entry point of the narrow tunnel.
+  //    One reasone for such event might be in the narrow tunnel entry point, there's too much interference of the ultrosinc sounds from the 3 sonar sensors, because
+  //    no 0 reading event is occurring in the no - extension tunnel entry points.
+  // 1. Introduce delay betwee sensor readings and see if the misreading can be avoided.
+  //    delay = 10ms * 3 = 30 ms;   The issue is persistent, pid response is slow.        No hitting.
+  //    delay = 15ms * 3 = 45 ms;   The issue is persistent for the ccw entry point only. No hitting.
+  //    delay = 20ms * 3 = 60 ms;   Issue is persistent. PID response is extremely slow - Wall hitting for high speed(120).which we can afford for a high speed first round.
+  // 2. Detect round order at the beginning via camera, and just take turn in one side - no condition checking for the other side. - safest way to avoid those wall hitting. -
+  ///   We must try this method - and after implementing and with this we can also try single sensor pid (and the front sensor reading to detect turns. )
+  //    This will be particularly useful in the second round, where we'll consider a left turn/right turn only when encountering an obstacle, and for corners we'll just give
+  //    a fixed turn
+
+  // // Mechanism 3: Taking turn in one side only after detecting the round direction
+  // if((forwardSpeed/2)%2==0){ //cw round
+  //   if(rightDistance==0 || (frontDistance!=0 && frontDistance < frontDistanceThreshold))
+  //   {
+  //     rightDistance = terminalDistanceThreshold;
+  //   }
+  // }
+  // else { //ccw round
+  //   if(leftDistance==0 || (frontDistance!=0 && frontDistance < frontDistanceThreshold))
+  //   {
+  //     leftDistance = terminalDistanceThreshold;
+  //   }
+
+  // }
+
   handleButtonPress();
 
   value = leftDistance - rightDistance;
@@ -112,15 +200,10 @@ void loop() {
 
   if (editParameter == 1) { configureParameters(); }
   if (gameStarted == 1) {
-    int steer_angle = midAngle;
-    if (PIDangle > 0) {
-      steer_angle = midAngle - min(steerAngle, PIDangle);
-    } else {
-      steer_angle = midAngle + min(steerAngle, abs(PIDangle));
-    }
-    steering_servo.write(steer_angle);
+    writeAngleToServo();
   }
 }
+
 
 
 void setupDisplay() {
@@ -141,8 +224,10 @@ void setupDisplay() {
   display.println(lineInterval);
   display.print("stopDel: ");
   display.println(stopDelay);
-  display.print("steerA: ");
-  display.println(steerAngle);
+  display.print("rSteer: ");
+  display.println(restrictedSteer);
+  display.print("urSteer: ");
+  display.println(unrestrictedSteer);
   display.display();
 }
 
@@ -152,12 +237,9 @@ void handleSerialCommand(String command) {
   float constant_value = constant_value_string.toFloat();
 
   if (command == "x") {  // Commands the car to stop
-    gameStarted = 0;
-    steering_servo.write(midAngle);
-    goForward(0);
+    stopGame();
   } else if (command == "y") {
-    gameStarted = 1;
-    goForward(forwardSpeed);
+    startGame();
   } else {
     switch (constant_name) {
       case 'p':  //Proportional of PID
@@ -182,6 +264,14 @@ void handleSerialCommand(String command) {
         digitalWrite(ledPin, HIGH);
         break;
 
+      case 'b':  // Blue line is encountered before the orange line in the runtime of the python script -> round is anti-clockwise
+        roundDirection = 1; 
+        break;
+
+      case 'o':  // Orange line is encountered before the blue line in the runtie of the python script -> round is clockwise
+         roundDirection = 0; 
+        break;
+
       case 'm':  //MidAngle setup of the steering servo
         Serial.println(int(constant_value));
         steering_servo.write(int(constant_value));
@@ -203,46 +293,50 @@ void configureParameters() {
     display.print("L:");
     display.print(leftDistance);
     display.print(" F:");
-    display.print(frontDistance); 
+    display.print(frontDistance);
     display.print(" R:");
     display.println(rightDistance);
+    if (editParameter == 1 && parameterIndex == 0) {
+      writeAngleToServo();
+      display.print("> ");
+    }
     display.print("A: ");
     display.print(int(PIDangle));
     display.println(" deg");
-    display.println(); 
+    display.println();
   }
 
 
   if (parameterIndex <= 3) {
-    if (editParameter == 1 && parameterIndex == 0) { display.print("> "); }
+    if (editParameter == 1 && parameterIndex == 1) { display.print("> "); }
     display.print("Speed: ");
     display.println(forwardSpeed);
     display.println();
   }
 
   if (parameterIndex <= 4) {
-    if (editParameter == 1 && parameterIndex == 1) { display.print("> "); }
+    if (editParameter == 1 && parameterIndex == 2) { display.print("> "); }
     display.print("Kp:");
     display.println(Kp);
     display.println();
   }
 
   if (parameterIndex <= 5) {
-    if (editParameter == 1 && parameterIndex == 2) { display.print("> "); }
+    if (editParameter == 1 && parameterIndex == 3) { display.print("> "); }
     display.print("Ki:");
     display.println(Ki);
     display.println();
   }
 
   if (parameterIndex <= 6) {
-    if (editParameter == 1 && parameterIndex == 3) { display.print("> "); }
+    if (editParameter == 1 && parameterIndex == 4) { display.print("> "); }
     display.print("Kd:");
     display.println(Kd);
     display.println();
   }
 
   if (parameterIndex <= 7) {
-    if (editParameter == 1 && parameterIndex == 4) { display.print("> "); }
+    if (editParameter == 1 && parameterIndex == 5) { display.print("> "); }
     display.print("LineIntv: ");
     display.println(lineInterval);
     display.println();
@@ -250,18 +344,27 @@ void configureParameters() {
 
 
   if (parameterIndex <= 8) {
-    if (editParameter == 1 && parameterIndex == 5) { display.print("> "); }
+    if (editParameter == 1 && parameterIndex == 6) { display.print("> "); }
     display.print("StopDel: ");
     display.println(stopDelay);
     display.println();
   }
 
   if (parameterIndex <= 9) {
-    if (editParameter == 1 && parameterIndex == 6) { display.print("> "); }
-    display.print("SteerA: ");
-    display.println(steerAngle);
+    if (editParameter == 1 && parameterIndex == 7) { display.print("> "); }
+    display.print("rSteer:");
+    display.println(restrictedSteer);
     display.println();
   }
+
+  if (parameterIndex <= 10) {
+    if (editParameter == 1 && parameterIndex == 8) { display.print("> "); }
+    display.print("urSteer:");
+    display.println(unrestrictedSteer);
+    display.println();
+  }
+
+
 
   display.println();
   display.display();
@@ -279,28 +382,32 @@ void handleButtonPress() {
     if (gap < 500) {
       if (editParameter == 0) {
         stopGame();
+        digitalWrite(buzzerPin, LOW);
       } else if (editParameter == 1) {
         switch (parameterIndex) {
-          case 0:
+          case 1:
             forwardSpeed -= (forwardSpeed >= 2) ? 2 : 0;
             break;
-          case 1:
+          case 2:
             Kp -= 0.5;
             break;
-          case 2:
+          case 3:
             Ki -= 0.05;
             break;
-          case 3:
+          case 4:
             Kd -= 0.05;
             break;
-          case 4:
+          case 5:
             lineInterval -= 50;
             break;
-          case 5:
+          case 6:
             stopDelay -= 50;
             break;
-          case 6:
-            steerAngle -= (steerAngle >= 1) ? 1 : 0;
+          case 7:
+            restrictedSteer -= (restrictedSteer >= 1) ? 1 : 0;
+            break;
+          case 8:
+            unrestrictedSteer -= (unrestrictedSteer >= 1) ? 1 : 0;
             break;
 
           default:
@@ -311,8 +418,9 @@ void handleButtonPress() {
     } else if (gap <= 1500)  //Going one step up in the edit parameter menu
     {
       parameterIndex--;
-      if (parameterIndex < 0) { parameterIndex = parameterCount - 1;
-       }
+      if (parameterIndex < 0) {
+        parameterIndex = parameterCount - 1;
+      }
     } else if (gap > 2500)  // If presstime exceeds 3 second, we'll shutdown the raspi, won't wait for the release
     {
       Serial.write('d');  //Commands the SBC to shutdown
@@ -337,42 +445,52 @@ void handleButtonPress() {
         }
       } else if (editParameter == 1) {
         switch (parameterIndex) {
-          case 0:
+          case 1:
             forwardSpeed += (forwardSpeed >= 2) ? 2 : 0;
             break;
-          case 1:
+          case 2:
             Kp += 0.5;
             break;
-          case 2:
+          case 3:
             Ki += 0.05;
             break;
-          case 3:
+          case 4:
             Kd += 0.05;
             break;
-          case 4:
+          case 5:
             lineInterval += 50;
             break;
-          case 5:
+          case 6:
             stopDelay += 50;
             break;
-          case 6:
-            steerAngle += (steerAngle < maxSteer) ? 1 : 0;
+          case 7:
+            restrictedSteer += (restrictedSteer < unrestrictedSteer) ? 1 : 0;
             break;
+          case 8:
+            unrestrictedSteer += (unrestrictedSteer < maxSteer) ? 1 : 0;
+
           default:
             break;
         }
       }
     } else if (gap < 1500) {
       parameterIndex = (parameterIndex + 1) % parameterCount;
+      if (parameterIndex == 1 || parameterIndex == parameterCount - 1)  //Resetting the servo position when the Angle menu is not in focus.
+      {
+        steering_servo.write(midAngle);
+      }
     } else if (gap < 3000) {
       if (editParameter == 1) {
+        steering_servo.write(midAngle);  //Resetting the servo position
+
         preferences.putFloat("Kp", Kp);
         preferences.putFloat("Ki", Ki);
         preferences.putFloat("Kd", Kd);
         preferences.putInt("speed", forwardSpeed);
         preferences.putInt("lineInterval", lineInterval);
         preferences.putInt("stopDelay", stopDelay);
-        preferences.putFloat("steerAngle", steerAngle); 
+        preferences.putFloat("rSteer", restrictedSteer);
+        preferences.putFloat("urSteer", unrestrictedSteer);
         editParameter = 0;
         // Updates the associated variables in the SBC
         Serial.print("a:");
@@ -386,16 +504,18 @@ void handleButtonPress() {
         display.println(forwardSpeed);
         display.print("Kp:");
         display.println(Kp);
-        display.print("Ki:"); 
-        display.println(Ki); 
+        display.print("Ki:");
+        display.println(Ki);
         display.print("Kd:");
         display.println(Kd);
         display.print("Line Intv: ");
         display.println(lineInterval);
         display.print("StopDel: ");
         display.println(stopDelay);
-        display.print("SteerA: "); 
-        display.println(steerAngle); 
+        display.print("rSteer: ");
+        display.println(restrictedSteer);
+        display.print("urSteer: ");
+        display.println(unrestrictedSteer);
 
         display.display();
       } else if (editParameter == 0) {
@@ -408,6 +528,16 @@ void handleButtonPress() {
 }
 
 
+void writeAngleToServo() {
+  int steer_angle = midAngle;
+  if (PIDangle > 0) {
+    steer_angle = midAngle - min(steerAngle, short(PIDangle));
+  } else {
+    steer_angle = midAngle + min(steerAngle, short(abs(PIDangle)));
+  }
+  steering_servo.write(steer_angle);
+}
+
 void startGame() {
   gameStarted = 1;
   Serial.print("r");  //Commands the raspberry pie to restart the line order detection process
@@ -415,6 +545,7 @@ void startGame() {
   goForward(forwardSpeed);
   digitalWrite(ledPin, LOW);  // Turning Off the LED to use it as the high setpoint monitor.
 }
+
 
 void stopGame() {
   gameStarted = 0;

@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 
 #define MAX_DISTANCE 100 // Maximum distance (in cm) to ping.
-#define frontDistanceThreshold 30 //cm
+#define frontDistanceThreshold 40 //cm
 
 //left = 32
 NewPing frontSonar = NewPing(33, 33, MAX_DISTANCE);
