@@ -1,3 +1,9 @@
+//Board: esp32 by Espressif Systems. Version: 1.0.3
+//ESP32Servo by Kevin, Harrington, John K. Benett. Version: 3.0.6
+//NewPing by Tim Eckel. Version: 1.9.7
+//Adafruit GFX Library by Adafruit. Version: 1.12.0
+//Adafruit SSD1306 by Adafruit. Version: 2.5.13
+
 #include <Preferences.h>
 #include "motors.h"
 #include "button.h"
@@ -18,9 +24,9 @@ float error = 0;         // The difference between value and setpoint.
 float lastError = 0;
 float PIDangle = 0;
 float integralError = 0;
-float restrictedSteer = 40;  // maximum allowed angle change in left or right direction for steering.
-float unrestrictedSteer = 50;
-short steerAngle = restrictedSteer;
+int restrictedSteer = 40;  // maximum allowed angle change in left or right direction for steering.
+int unrestrictedSteer = 45;
+int steerAngle = restrictedSteer;
 
 
 #define parameterCount 9  // Number of parameters to display, configure or both.
@@ -41,8 +47,8 @@ void setup() {
   Ki = preferences.getFloat("Ki", Ki);
   Kd = preferences.getFloat("Kd", Kd);
   forwardSpeed = preferences.getInt("speed", forwardSpeed);
-  restrictedSteer = preferences.getFloat("rSteer", restrictedSteer);
-  unrestrictedSteer = preferences.getFloat("urSteer", unrestrictedSteer);
+  restrictedSteer = preferences.getInt("rSteer", restrictedSteer);
+  unrestrictedSteer = preferences.getInt("urSteer", unrestrictedSteer);
 
 
   pinMode(ledPin, OUTPUT);
@@ -74,7 +80,7 @@ short parameterIndex = 0;  // 0  = Speed, 1 = Kp, 2 = Kd
 short leftDistance = 0;
 short rightDistance = 0;
 short frontDistance = 0;
-bool roundDirection = 0;  // 0 = clockwise 1 = ccw
+int roundDirection = 0;  // 0 = clockwise 1 = ccw
 
 void loop() {
   if (Serial.available()) {
@@ -489,8 +495,8 @@ void handleButtonPress() {
         preferences.putInt("speed", forwardSpeed);
         preferences.putInt("lineInterval", lineInterval);
         preferences.putInt("stopDelay", stopDelay);
-        preferences.putFloat("rSteer", restrictedSteer);
-        preferences.putFloat("urSteer", unrestrictedSteer);
+        preferences.putInt("rSteer", restrictedSteer);
+        preferences.putInt("urSteer", unrestrictedSteer);
         editParameter = 0;
         // Updates the associated variables in the SBC
         Serial.print("a:");
@@ -531,9 +537,9 @@ void handleButtonPress() {
 void writeAngleToServo() {
   int steer_angle = midAngle;
   if (PIDangle > 0) {
-    steer_angle = midAngle - min(steerAngle, short(PIDangle));
+    steer_angle = midAngle - min(steerAngle, int(PIDangle));
   } else {
-    steer_angle = midAngle + min(steerAngle, short(abs(PIDangle)));
+    steer_angle = midAngle + min(steerAngle, int(abs(PIDangle)));
   }
   steering_servo.write(steer_angle);
 }

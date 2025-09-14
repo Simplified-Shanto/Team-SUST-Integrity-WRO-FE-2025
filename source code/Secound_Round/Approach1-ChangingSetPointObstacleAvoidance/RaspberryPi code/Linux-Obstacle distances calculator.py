@@ -82,7 +82,7 @@ def estimate_distance(perceived_dimension_px):
         return 0.0
     return round((KNOWN_WIDTH_CM * FOCAL_LENGTH_PX) / perceived_dimension_px, 2)
 
-    # Define bounds for the general trackbar mask (works fine in bright light condition ) 
+    # Define bounds for the general trackbar mask (works fine in bright light (day) condition ) 
 lower_bound_green = np.array([15, 10, 0])
 upper_bound_green = np.array([46, 255, 255])
 1
@@ -100,7 +100,7 @@ orange_line_upper_bound = np.array([179, 170, 255 ])
 
 
 
-    # # Define bounds for the general trackbar mask (works fine in low light condition) 
+    # # Define bounds for the general trackbar mask (works fine in low light(night) condition) 
 # lower_bound_green = np.array([25, 135, 50])
 # upper_bound_green = np.array([55, 255, 255])
 
@@ -258,7 +258,7 @@ while True:
                     print("Line Interval = ", lineInterval)
 
 
-    if DEVELOPING == 1 or blue_line_count!=-1: # do all the processes, either if we are developing the code, or we are running a lap. 
+    if DEVELOPING == 1 or blue_line_count!=-1: # do all the image processing, either if we are developing the code, or we are running a lap. 
         if CAM_TYPE==1:
             success, frame = cap.read()
         elif CAM_TYPE==0: 
@@ -284,7 +284,7 @@ while True:
             #Checking for blue line
         current_time = time.time()*1000
         
-        if blue_line_count!=-1:
+        if blue_line_count!=-1:  # We'll only do the following processes when blue_line_count is set to zero by pressing the game start button in the vehicle and receiving serial command 'r' from the LLMC. The reason is avoiding early count of the lines by environmental noise before the round has started. 
             for contour_index, contour in enumerate(blue_line_contours): 
                 area = cv2.contourArea(contour)
                 #print("blue = ", area)

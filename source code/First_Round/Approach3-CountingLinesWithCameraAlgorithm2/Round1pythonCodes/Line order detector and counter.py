@@ -17,7 +17,7 @@ TUNE_HSV = 0 # whether we want to tune the hsv color values for different image 
 SERIAL_READY = 1 #Whether a serial device is connected or not
 
 
-THRESHOLD_AREA = 1000
+MIN_LINE_AREA = 1000
 lineInterval = 1000 # The interval between counting consecutive lines. 
 if MACHINE == 1 and CAM_TYPE==0: 
     from picamera2 import Picamera2
@@ -38,14 +38,6 @@ elif SERIAL_READY==1 and MACHINE ==0:
     time.sleep(2)
     ser.reset_input_buffer()
 
-# We'll count lines based on the blue line only - because, there's possiblity of overlapping for red and orange line. Later, we may count both lines with their relative order for more precise stopping at the position. 
-# Right now we'll only focus on stopping after completing 3 full laps. 
-
-blue_lower = np.array([71, 203 , 0 ])
-blue_upper = np.array([179, 255, 255 ])
-
-# orange_lower = np.array([0, 127, 163 ])
-# orange_upper = np.array([47, 255, 255 ])
 
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
@@ -67,11 +59,16 @@ elif MACHINE==1:             # Linux / Raspberry Pi
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
-line_count = -1 # The counting hasn't begun yet. 
-last_time = time.time() * 1000 # Getting the total execution time in millisecond
+orange_line_count = -1 # The counting hasn't begun yet. 
+orange_line_timer = time.time() * 1000 # Getting the total execution time in millisecond
+directionSentFlag = 0 # Whether we've reported the direction of the round to the LLM
 
+# We'll count lines based on the orange line only - because, there's possiblity of exposure to abudant blue region inside the small boundry and in the outer boundry. Later, we may count both lines with their relative order for more precise stopping at the position. 
 blue_line_lower_bound = np.array([99, 40 , 90 ])
 blue_line_upper_bound = np.array([135, 255, 255 ])
+
+orange_line_lower_bound = np.array([174, 102, 14 ])
+orange_line_upper_bound = np.array([179, 170, 255 ])
 
 def nothing(x):
     pass
@@ -90,20 +87,27 @@ if TUNE_HSV==1 and DEVELOPING==1:
     cv2.createTrackbar("Blue Line U_S", "Line HSV trackbars",blue_line_upper_bound[1], 255, nothing )
     cv2.createTrackbar("Blue Line U_V", "Line HSV trackbars",blue_line_upper_bound[2], 255, nothing )
 
+
+    cv2.createTrackbar("Orange Line L_H", "Line HSV trackbars",orange_line_lower_bound[0], 179, nothing )
+    cv2.createTrackbar("Orange Line L_S", "Line HSV trackbars",orange_line_lower_bound[1], 255, nothing )
+    cv2.createTrackbar("Orange Line L_V", "Line HSV trackbars",orange_line_lower_bound[2], 255, nothing )
+    cv2.createTrackbar("Orange Line U_H", "Line HSV trackbars",orange_line_upper_bound[0], 179, nothing )
+    cv2.createTrackbar("Orange Line U_S", "Line HSV trackbars",orange_line_upper_bound[1], 255, nothing )
+    cv2.createTrackbar("Orange Line U_V", "Line HSV trackbars",orange_line_upper_bound[2], 255, nothing )
+
 if SERIAL_READY:
     message = 'r;' #Suggests to the esp32 that the raspberry pie is ready for image processing 
     ser.write(message.encode('utf-8'))
     time.sleep(1)  
 
-
 while True:
-    if ser.in_waiting > 0:  # If there's some message from Arduino
+    if ser.in_waiting > 0:  # If there's some message from LLMC
         command = ser.readline().decode('utf-8').strip()  # Read line & strip newline/spaces
         if DEVELOPING == 1:
             print("Raw command = ", command)
         # Case 1: simple one-letter command like 'r' or 'd'
         if command == "r":   # The lap is starting via button press, so start counting lines
-            line_count = 0
+            orange_line_count = 0
             if DEVELOPING: print("Lap started (reset line count).")
 
         elif command == "d" : 
@@ -142,63 +146,64 @@ while True:
 
     current_time = time.time() * 1000
 
-    if CAM_TYPE==1:
-        success, frame = cap.read()
-    elif CAM_TYPE==0: 
-        frame = picam2.capture_array()
+    if DEVELOPING == 1 or orange_line_count!=-1: # do all the image processing, either if we are developing the code, or we are running a lap. 
+        if CAM_TYPE==1:
+            success, frame = cap.read()
+        elif CAM_TYPE==0: 
+            frame = picam2.capture_array()
+        
+        #frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        # #cv2.imshow("Original", frame)
+        frame = frame[100:400, 150:590] #cropping the image to extract only useful part
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        
+        mask_blue = cv2.inRange(hsv, blue_line_lower_bound, blue_line_upper_bound)
+        mask_orange = cv2.inRange(hsv , orange_line_lower_bound, orange_line_upper_bound)
+    
+        blue_line_contours, _ = cv2.findContours(mask_blue, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        orange_line_contours, _ = cv2.findContours(mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        if orange_line_count!=-1: # We'll only do the following processes when blue_line_count is set to zero by pressing the game start button in the vehicle and receiving serial command 'r' from the LLMC. The reason is avoiding early count of the lines by environmental noise before the round has started. 
+            #Checking for blue lines
+            for contour_index, contour in enumerate(blue_line_contours): 
+                area = cv2.contourArea(contour)
+                if area > MIN_LINE_AREA:
+                    if directionSentFlag == 0:
+                        if SERIAL_READY:
+                            ser.write("b;".encode('utf-8'))
+                        if DEVELOPING:
+                            print("Serial: b;")
+                        directionSentFlag = -1  # Round is anticlockwise
+               
+            #Checking for orange lines
+            for cntour_index, contour in enumerate(orange_line_contours): 
+                area = cv2.contourArea(contour)
+                if area > MIN_LINE_AREA:
+                    if(current_time - orange_line_timer > lineInterval):
+                        orange_line_count +=1
+                        orange_line_timer = current_time
+                    if directionSentFlag == 0:
+                        if SERIAL_READY:
+                            ser.write("o;".encode('utf-8'))
+                        if DEVELOPING: 
+                            print("Serial: o;")
+                        directionSentFlag = 1 # Round is clockwise
+            
+            # Checking for lap completion 
+            if orange_line_count==12:
+                if DEVELOPING==1: 
+                    print("3 laps done. Waiting for RESET command"); 
+                if SERIAL_READY==1: 
+                    message = 'x;' #Commands to stop the car. 
+                    time.sleep(stopDelay/1000)  # Waiting a bit to reach the center fo the tunnel. 
+                    ser.write(message.encode('utf-8'))
+                orange_line_count = -1  # We won't count lines until a new lap is started by pressing the button
 
-    
-    #frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-    # #cv2.imshow("Original", frame)
-    frame = frame[100:400, 150:590] #cropping the image to extract only useful part
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    
-    mask_blue = cv2.inRange(hsv, blue_line_lower_bound, blue_line_upper_bound)
-    #mask_orange = cv2.inRange(hsv, orange_lower, orange_upper)
-    
-    blue_contours, _ = cv2.findContours(mask_blue, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    #orange_contours, _ = cv2.findContours(mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    #This basically measures, which color of threshold area do we get first
-    for contour_index, contour in enumerate(blue_contours): 
-        area = cv2.contourArea(contour)
-       # if DEVELOPING==1:
-               # print("blue = ", area)
-        if (current_time - last_time > lineInterval) and (cv2.contourArea(contour) > THRESHOLD_AREA) and line_count!=-1:
-            line_count = line_count + 1
-            last_time = current_time
-    # Checking for lap completion 
-    if line_count==12:
-        if DEVELOPING==1: 
-            print("3 laps done. Waiting for RESET command"); 
-        if SERIAL_READY==1: 
-            message = 'x;' #Commands to stop the car. 
-            time.sleep(stopDelay/1000)  # Waiting a bit to reach the center fo the tunnel. 
-            ser.write(message.encode('utf-8'))
-        #time.sleep(1)
-        line_count = -1  # We won't count lines until a new lap is started by pressing the button
-
-    
-    # for cntour_index, contour in enumerate(orange_contours): 
-    #     area = cv2.contourArea(contour)
-    #     print("orange = ", area)
-    #     if area > thresholdArea:
-    #         message = 'o;'
-    #         ser.write(message.encode('utf-8'))
-    #         selectSetPoint = 0
-    #         time.sleep(1)
-
-        #cv2.imshow("orange_mask", mask_orange)
-    # else: 
-    #     time.sleep(0.01)
-    #     if ser.in_waiting > 0: 
-    #         command = ser.readline().decode('utf-8')
-    #         print(command)
-    #         selectSetPoint = 1
+        
     if DEVELOPING==1: 
-        masked_image = cv2.bitwise_and(frame, frame, mask = mask_blue); 
-        cv2.putText(masked_image,f"lines = {line_count}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
-        cv2.imshow("blue_mask", masked_image); 
+        masked_image = cv2.bitwise_and(frame, frame, mask = mask_orange); 
+        cv2.putText(masked_image,f"lines = {orange_line_count}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
+        cv2.imshow("orange_mask", masked_image); 
 
 
     if DEVELOPING ==1 and TUNE_HSV == 1:
@@ -211,7 +216,6 @@ while True:
         bl_u_v = cv2.getTrackbarPos("Blue Line U_V", "Line HSV trackbars")
         blue_line_lower_bound = np.array([bl_l_h, bl_l_s , bl_l_v ])
         blue_line_upper_bound = np.array([bl_u_h, bl_u_s,  bl_u_v ])
-
 
     # Press 'q' to quit
     if DEVELOPING==1: 
