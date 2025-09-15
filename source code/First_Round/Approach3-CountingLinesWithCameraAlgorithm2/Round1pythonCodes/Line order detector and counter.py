@@ -64,11 +64,22 @@ orange_line_timer = time.time() * 1000 # Getting the total execution time in mil
 directionSentFlag = 0 # Whether we've reported the direction of the round to the LLM
 
 # We'll count lines based on the orange line only - because, there's possiblity of exposure to abudant blue region inside the small boundry and in the outer boundry. Later, we may count both lines with their relative order for more precise stopping at the position. 
-blue_line_lower_bound = np.array([99, 40 , 90 ])
-blue_line_upper_bound = np.array([135, 255, 255 ])
+# blue_line_lower_bound = np.array([99, 40 , 90 ])
+# blue_line_upper_bound = np.array([135, 255, 255 ])
 
-orange_line_lower_bound = np.array([174, 102, 14 ])
-orange_line_upper_bound = np.array([179, 170, 255 ])
+# orange_line_lower_bound = np.array([174, 102, 14 ])
+# orange_line_upper_bound = np.array([179, 170, 255 ])
+
+
+#Daytime condition 
+
+blue_line_lower_bound = np.array([101, 82 , 00 ])
+blue_line_upper_bound = np.array([167, 255, 255 ])
+
+orange_line_lower_bound = np.array([155, 127, 0 ])
+orange_line_upper_bound = np.array([179, 255, 255 ])
+
+
 
 def nothing(x):
     pass

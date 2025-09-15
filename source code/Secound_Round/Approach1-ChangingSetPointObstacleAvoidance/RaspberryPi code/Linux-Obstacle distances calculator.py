@@ -92,12 +92,11 @@ upper_bound1_red = np.array([179, 255, 255])
 lower_bound2_red = np.array([165, 190, 00])
 upper_bound2_red = np.array([179, 255, 255])
 
-blue_line_lower_bound = np.array([111, 93 , 00 ])
-blue_line_upper_bound = np.array([150, 255, 255 ])
+blue_line_lower_bound = np.array([101, 82 , 00 ])
+blue_line_upper_bound = np.array([167, 255, 255 ])
 
-orange_line_lower_bound = np.array([174, 102, 14 ])
-orange_line_upper_bound = np.array([179, 170, 255 ])
-
+orange_line_lower_bound = np.array([155, 127, 0 ])
+orange_line_upper_bound = np.array([179, 255, 255 ])
 
 
     # # Define bounds for the general trackbar mask (works fine in low light(night) condition) 
