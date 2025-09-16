@@ -2,19 +2,23 @@
 #-----Full forms------------------
 #LLMC - Low level microcontroller
 #SBC - Single Board Computer
+#! py -3.13
+import sys
+print(sys.executable)
+print(sys.version)
 
 #!/usr/bin/env python3
 
 # --- Configuration ---
-DEVELOPING   = 0 # The code is in development mode, and we'll show processed images at different stages, 
+DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
-CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam. 
+CAM_TYPE = 1 # 0  = Raspicamera, 1  = webcam. 
 CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam 
 COM_PORT = 4
-MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
-TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
-SERIAL_READY = 1 #Whether a serial device is connected or not
+MACHINE = 0  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
+TUNE_HSV = 1 # whether we want to tune the hsv color values for different image elements. 
+SERIAL_READY = 0 #Whether a serial device is connected or not
 
 
 MIN_LINE_AREA = 1000
@@ -64,6 +68,9 @@ orange_line_timer = time.time() * 1000 # Getting the total execution time in mil
 directionSentFlag = 0 # Whether we've reported the direction of the round to the LLM
 
 # We'll count lines based on the orange line only - because, there's possiblity of exposure to abudant blue region inside the small boundry and in the outer boundry. Later, we may count both lines with their relative order for more precise stopping at the position. 
+
+# Nighttime condition
+
 # blue_line_lower_bound = np.array([99, 40 , 90 ])
 # blue_line_upper_bound = np.array([135, 255, 255 ])
 
@@ -86,8 +93,8 @@ def nothing(x):
 
 if TUNE_HSV==1 and DEVELOPING==1:
     # --- Create General Trackbar Window
-    cv2.namedWindow("HSV Trackbars", cv2.WINDOW_NORMAL) #WINDOW_NORMAL is a flag that let's user resize the window, by default its, cv2.AUTOSIZE, which makes the window fit to the size of the content and it is unresizable. 
-    cv2.resizeWindow("HSV Trackbars", 600, 600)
+    cv2.namedWindow("Line HSV trackbars", cv2.WINDOW_NORMAL) #WINDOW_NORMAL is a flag that let's user resize the window, by default its, cv2.AUTOSIZE, which makes the window fit to the size of the content and it is unresizable. 
+    cv2.resizeWindow("Line HSV trackbars", 600, 600)
     cv2.waitKey(100)  # Wait 100ms for the window to draw
     # Create trackbars for general HSV lower and upper bounds
 
@@ -112,48 +119,49 @@ if SERIAL_READY:
     time.sleep(1)  
 
 while True:
-    if ser.in_waiting > 0:  # If there's some message from LLMC
-        command = ser.readline().decode('utf-8').strip()  # Read line & strip newline/spaces
-        if DEVELOPING == 1:
-            print("Raw command = ", command)
-        # Case 1: simple one-letter command like 'r' or 'd'
-        if command == "r":   # The lap is starting via button press, so start counting lines
-            orange_line_count = 0
-            if DEVELOPING: print("Lap started (reset line count).")
+    if SERIAL_READY: 
+        if ser.in_waiting > 0:  # If there's some message from LLMC
+            command = ser.readline().decode('utf-8').strip()  # Read line & strip newline/spaces
+            if DEVELOPING == 1:
+                print("Raw command = ", command)
+            # Case 1: simple one-letter command like 'r' or 'd'
+            if command == "r":   # The lap is starting via button press, so start counting lines
+                orange_line_count = 0
+                if DEVELOPING: print("Lap started (reset line count).")
 
-        elif command == "d" : 
-            if MACHINE==1: #Linux 
-                os.system("sudo shutdown now") # Shutdown immediately
-            elif MACHINE==0: # Windows
-                if SERIAL_READY:
-                    ser.close()
-                break   #Stop execution of the script
-        else:
-            # Case 2: format 'char:value;' (e.g., 'p:1.23;')
-            if ':' in command:
-                try:
-                    constant_name, value_str = command.split(":", 1)
-                    constant_value = float(value_str)
-
-                    if DEVELOPING:
-                        print(f"constant_name = {constant_name}, constant_value = {constant_value}")
-
-                    # Handle based on the constant_name
-                    if constant_name == 'a':
-                        lineInterval = constant_value
-                    elif constant_name == 'b':
-                        stopDelay = constant_value
-                    else:
-                        if DEVELOPING: print("Unknown constant:", constant_name)
-
-                except ValueError:
-                    if DEVELOPING: print("Invalid format received:", command)
-
+            elif command == "d" : 
+                if MACHINE==1: #Linux 
+                    os.system("sudo shutdown now") # Shutdown immediately
+                elif MACHINE==0: # Windows
+                    if SERIAL_READY:
+                        ser.close()
+                    break   #Stop execution of the script
             else:
-                # If it's not in the expected format, treat it as your lineInterval
-                lineInterval = command
-                if DEVELOPING:
-                    print("Line Interval = ", lineInterval)
+                # Case 2: format 'char:value;' (e.g., 'p:1.23;')
+                if ':' in command:
+                    try:
+                        constant_name, value_str = command.split(":", 1)
+                        constant_value = float(value_str)
+
+                        if DEVELOPING:
+                            print(f"constant_name = {constant_name}, constant_value = {constant_value}")
+
+                        # Handle based on the constant_name
+                        if constant_name == 'a':
+                            lineInterval = constant_value
+                        elif constant_name == 'b':
+                            stopDelay = constant_value
+                        else:
+                            if DEVELOPING: print("Unknown constant:", constant_name)
+
+                    except ValueError:
+                        if DEVELOPING: print("Invalid format received:", command)
+
+                else:
+                    # If it's not in the expected format, treat it as your lineInterval
+                    lineInterval = command
+                    if DEVELOPING:
+                        print("Line Interval = ", lineInterval)
 
     current_time = time.time() * 1000
 
@@ -205,19 +213,26 @@ while True:
                 if DEVELOPING==1: 
                     print("3 laps done. Waiting for RESET command"); 
                 if SERIAL_READY==1: 
-                    message = 'x;' #Commands to stop the car. 
+                    message = 'x;' #Commands to stop the motor only 
                     time.sleep(stopDelay/1000)  # Waiting a bit to reach the center fo the tunnel. 
+                    ser.write(message.encode('utf-8'))
+                    time.sleep(2)  #Wating for 2 second before sending the steering off command
+                    message = 'z;' #Command to stop the lapse completely
                     ser.write(message.encode('utf-8'))
                 orange_line_count = -1  # We won't count lines until a new lap is started by pressing the button
 
         
     if DEVELOPING==1: 
         orange_line_masked_frame = cv2.bitwise_and(frame, frame, mask = mask_orange)
+        cv2.imshow("orange line mask", orange_line_masked_frame)
+
         blue_line_masked_frame = cv2.bitwise_and(frame, frame, mask = mask_blue)
+        cv2.imshow("blue line mask", blue_line_masked_frame)
+
         combined_line_mask = cv2.bitwise_or(blue_line_masked_frame, orange_line_masked_frame)
 
         cv2.putText(combined_line_mask,f"lines = {orange_line_count}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
-        cv2.imshow("orange_mask", combined_line_mask); 
+        cv2.imshow("combined_mask", combined_line_mask); 
 
 
     if DEVELOPING ==1 and TUNE_HSV == 1:
