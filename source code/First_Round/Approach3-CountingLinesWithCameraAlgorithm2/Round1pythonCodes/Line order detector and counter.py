@@ -11,7 +11,7 @@
 #!/usr/bin/env python3
 
 # --- Configuration ---
-DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
+DEVELOPING   = 0 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
 CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam. 
@@ -137,6 +137,7 @@ while True:
             # Case 1: simple one-letter command like 'r' or 'd'
             if command == "r":   # The lap is starting via button press, so start counting lines
                 orange_line_count = 0
+                directionSentFlag = 0  
                 if DEVELOPING: print("Lap started (reset line count).")
 
             elif command == "d" : 
@@ -181,7 +182,7 @@ while True:
         elif CAM_TYPE==0: 
             frame = picam2.capture_array()
         
-        #frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         # #cv2.imshow("Original", frame)
         frame = frame[100:400, 150:590] #cropping the image to extract only useful part
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
