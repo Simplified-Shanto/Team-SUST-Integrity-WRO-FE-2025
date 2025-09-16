@@ -35,7 +35,7 @@ float setPoint = 0;  // The amount of difference in reading of the two ultrasoni
 //Above one is the initial setPoint which keeps the vehicle centered in a tunnel
 float dynamicSetPoint = 0;  //This setpoint is assigned after determining the run direction
 
-int terminalDistanceThreshold = 80;
+int terminalDistanceThreshold = 200;
 
 void setup() {
   Serial.begin(115200);
@@ -129,9 +129,9 @@ void loop() {
       //  digitalWrite(ledPin, LOW);
     } else if (leftDistance != 0 && rightDistance != 0)  //1 1
     {
-      if (leftDistance > rightDistance) {
+      if (roundDirection==1 && leftDistance > rightDistance) {
         leftDistance = terminalDistanceThreshold;
-      } else if (rightDistance > leftDistance) {
+      } else if (roundDirection == -1 && rightDistance > leftDistance) {
         rightDistance = terminalDistanceThreshold;
       }
       //  digitalWrite(ledPin, HIGH);
@@ -143,9 +143,10 @@ void loop() {
       if (roundDirection == -1) {  //cw round
         rightDistance = terminalDistanceThreshold;
       }
-    } else if(roundDirection == 1) {  //ccw round
+      else if(roundDirection == 1) {  //ccw round
       leftDistance = terminalDistanceThreshold;
     }
+    } 
   } else {
     steerAngle = restrictedSteer;
   }
@@ -274,10 +275,12 @@ void handleSerialCommand(String command) {
 
       case 'b':  // Blue line is encountered before the orange line in the runtime of the python script -> round is counter-clockwise
         roundDirection = 1;
+        if(gameStarted==1){goForward(forwardSpeed);}
         break;
 
       case 'o':  // Orange line is encountered before the blue line in the runtie of the python script -> round is clockwise
         roundDirection = -1;
+        if(gameStarted==1){goForward(forwardSpeed);} 
         break;
 
       case 'm':  //MidAngle setup of the steering servo
@@ -560,7 +563,7 @@ void startGame() {
   gameStarted = 1;
   Serial.print("r");  //Commands the raspberry pie to restart the line order detection process
   delay(500);         // Waiting for the raspberry
-  goForward(forwardSpeed);
+  goForward(90);
   digitalWrite(ledPin, LOW);  // Turning Off the LED to use it as the high setpoint monitor.
 }
 
