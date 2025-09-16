@@ -76,11 +76,11 @@ bool button1Flag = 0;
 long long pressTime2 = millis();
 long long pressTime1 = millis();
 bool editParameter = 0;
-short parameterIndex = 0;  // 0  = Speed, 1 = Kp, 2 = Kd
+short parameterIndex = 1;  //0 = Angle demonstration , 1 = speed
 short leftDistance = 0;
 short rightDistance = 0;
 short frontDistance = 0;
-int roundDirection = 0;  // 0 = clockwise 1 = ccw
+int roundDirection = 0;  // 0 = not detected yet, -1 = cw 1 = ccw
 
 void loop() {
   if (Serial.available()) {
@@ -121,12 +121,12 @@ void loop() {
     {
       rightDistance = terminalDistanceThreshold;
       digitalWrite(buzzerPin, LOW);
-      digitalWrite(ledPin, LOW);
+      //  digitalWrite(ledPin, LOW);
     } else if (leftDistance == 0 && rightDistance != 0)  //0 1
     {
       leftDistance = terminalDistanceThreshold;
       digitalWrite(buzzerPin, LOW);
-      digitalWrite(ledPin, LOW);
+      //  digitalWrite(ledPin, LOW);
     } else if (leftDistance != 0 && rightDistance != 0)  //1 1
     {
       if (leftDistance > rightDistance) {
@@ -134,16 +134,16 @@ void loop() {
       } else if (rightDistance > leftDistance) {
         rightDistance = terminalDistanceThreshold;
       }
-      digitalWrite(ledPin, HIGH);
+      //  digitalWrite(ledPin, HIGH);
       digitalWrite(buzzerPin, LOW);
-    } else if (leftDistance == 0 && rightDistance == 0) { //0 0 Both sonar sensor is reading zero, so we are resorting to the round direction for taking turns. 
+    } else if (leftDistance == 0 && rightDistance == 0) {  //0 0 Both sonar sensor is reading zero, so we are resorting to the round direction for taking turns.
       if (gameStarted == 1) {
         digitalWrite(buzzerPin, HIGH);
       }
-      if (roundDirection == 0) {  //cw round
+      if (roundDirection == -1) {  //cw round
         rightDistance = terminalDistanceThreshold;
       }
-    } else {  //ccw round
+    } else if(roundDirection == 1) {  //ccw round
       leftDistance = terminalDistanceThreshold;
     }
   } else {
@@ -243,9 +243,11 @@ void handleSerialCommand(String command) {
   float constant_value = constant_value_string.toFloat();
 
   if (command == "x") {  // Commands the car to stop
-    stopGame();
+    goForward(0);        //Stops the car, but still steers to handle the velocity resulted from momentum.
   } else if (command == "y") {
     startGame();
+  } else if (command == "z") {
+    stopGame();      //Stops the game, including steering. 
   } else {
     switch (constant_name) {
       case 'p':  //Proportional of PID
@@ -270,12 +272,12 @@ void handleSerialCommand(String command) {
         digitalWrite(ledPin, HIGH);
         break;
 
-      case 'b':  // Blue line is encountered before the orange line in the runtime of the python script -> round is anti-clockwise
-        roundDirection = 1; 
+      case 'b':  // Blue line is encountered before the orange line in the runtime of the python script -> round is counter-clockwise
+        roundDirection = 1;
         break;
 
       case 'o':  // Orange line is encountered before the blue line in the runtie of the python script -> round is clockwise
-         roundDirection = 0; 
+        roundDirection = -1;
         break;
 
       case 'm':  //MidAngle setup of the steering servo
@@ -302,6 +304,13 @@ void configureParameters() {
     display.print(frontDistance);
     display.print(" R:");
     display.println(rightDistance);
+
+    display.print("Round dir: "); // RO = round order
+    if(roundDirection==0) { display.println(" ---- "); //Not detected yet. 
+    }
+    else if (roundDirection==1) { display.println("ccw"); }
+    else if(roundDirection==-1) { display.println("cw");  }
+
     if (editParameter == 1 && parameterIndex == 0) {
       writeAngleToServo();
       display.print("> ");
@@ -309,7 +318,9 @@ void configureParameters() {
     display.print("A: ");
     display.print(int(PIDangle));
     display.println(" deg");
-    display.println();
+    
+    display.println(); 
+
   }
 
 
@@ -488,7 +499,7 @@ void handleButtonPress() {
     } else if (gap < 3000) {
       if (editParameter == 1) {
         steering_servo.write(midAngle);  //Resetting the servo position
-
+        roundDirection = 0; // We determined the round direction inside this parameter configuration session as a test, after the configurations are done, we're resetting it again for a fresh lap start. 
         preferences.putFloat("Kp", Kp);
         preferences.putFloat("Ki", Ki);
         preferences.putFloat("Kd", Kd);
@@ -527,6 +538,7 @@ void handleButtonPress() {
       } else if (editParameter == 0) {
         editParameter = 1;
         stopGame();
+        Serial.print("r"); // We need to determine the round order 
       }
     }
     button1Flag = 0;

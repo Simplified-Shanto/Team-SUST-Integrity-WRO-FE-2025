@@ -212,9 +212,12 @@ while True:
 
         
     if DEVELOPING==1: 
-        masked_image = cv2.bitwise_and(frame, frame, mask = mask_orange); 
-        cv2.putText(masked_image,f"lines = {orange_line_count}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
-        cv2.imshow("orange_mask", masked_image); 
+        orange_line_masked_frame = cv2.bitwise_and(frame, frame, mask = mask_orange)
+        blue_line_masked_frame = cv2.bitwise_and(frame, frame, mask = mask_blue)
+        combined_line_mask = cv2.bitwise_or(blue_line_masked_frame, orange_line_masked_frame)
+
+        cv2.putText(combined_line_mask,f"lines = {orange_line_count}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
+        cv2.imshow("orange_mask", combined_line_mask); 
 
 
     if DEVELOPING ==1 and TUNE_HSV == 1:
