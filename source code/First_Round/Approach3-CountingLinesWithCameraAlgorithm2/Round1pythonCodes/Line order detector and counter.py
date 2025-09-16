@@ -2,10 +2,11 @@
 #-----Full forms------------------
 #LLMC - Low level microcontroller
 #SBC - Single Board Computer
-#! py -3.13
-import sys
-print(sys.executable)
-print(sys.version)
+
+# Uncomment the following lines of code to know which python interepreter is currently being used by the script. 
+# import sys
+# print(sys.executable)
+# print(sys.version)
 
 #!/usr/bin/env python3
 
@@ -13,12 +14,12 @@ print(sys.version)
 DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
-CAM_TYPE = 1 # 0  = Raspicamera, 1  = webcam. 
+CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam. 
 CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam 
 COM_PORT = 4
-MACHINE = 0  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
-TUNE_HSV = 1 # whether we want to tune the hsv color values for different image elements. 
-SERIAL_READY = 0 #Whether a serial device is connected or not
+MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
+TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
+SERIAL_READY = 1 #Whether a serial device is connected or not
 
 
 MIN_LINE_AREA = 1000
@@ -69,7 +70,7 @@ directionSentFlag = 0 # Whether we've reported the direction of the round to the
 
 # We'll count lines based on the orange line only - because, there's possiblity of exposure to abudant blue region inside the small boundry and in the outer boundry. Later, we may count both lines with their relative order for more precise stopping at the position. 
 
-# Nighttime condition
+# Nighttime condition 1 
 
 # blue_line_lower_bound = np.array([99, 40 , 90 ])
 # blue_line_upper_bound = np.array([135, 255, 255 ])
@@ -77,14 +78,23 @@ directionSentFlag = 0 # Whether we've reported the direction of the round to the
 # orange_line_lower_bound = np.array([174, 102, 14 ])
 # orange_line_upper_bound = np.array([179, 170, 255 ])
 
+# Nighttime condition 2 
 
-#Daytime condition 
+blue_line_lower_bound = np.array([64, 82 , 0 ])
+blue_line_upper_bound = np.array([137, 255, 255 ])
 
-blue_line_lower_bound = np.array([101, 82 , 00 ])
-blue_line_upper_bound = np.array([167, 255, 255 ])
+orange_line_lower_bound = np.array([0, 62, 0 ])
+orange_line_upper_bound = np.array([69, 255, 255 ])
 
-orange_line_lower_bound = np.array([155, 127, 0 ])
-orange_line_upper_bound = np.array([179, 255, 255 ])
+
+
+#Daytime condition 1 
+
+# blue_line_lower_bound = np.array([101, 82 , 00 ])
+# blue_line_upper_bound = np.array([167, 255, 255 ])
+
+# orange_line_lower_bound = np.array([155, 127, 0 ])
+# orange_line_upper_bound = np.array([179, 255, 255 ])
 
 
 
@@ -243,8 +253,20 @@ while True:
         bl_u_h = cv2.getTrackbarPos("Blue Line U_H", "Line HSV trackbars") 
         bl_u_s = cv2.getTrackbarPos("Blue Line U_S", "Line HSV trackbars")
         bl_u_v = cv2.getTrackbarPos("Blue Line U_V", "Line HSV trackbars")
+
         blue_line_lower_bound = np.array([bl_l_h, bl_l_s , bl_l_v ])
         blue_line_upper_bound = np.array([bl_u_h, bl_u_s,  bl_u_v ])
+
+        ol_l_h = cv2.getTrackbarPos("Orange Line L_H", "Line HSV trackbars") #bl_l_h =  orange line lower hue
+        ol_l_s = cv2.getTrackbarPos("Orange Line L_S", "Line HSV trackbars")
+        ol_l_v = cv2.getTrackbarPos("Orange Line L_V", "Line HSV trackbars")
+    
+        ol_u_h = cv2.getTrackbarPos("Orange Line U_H", "Line HSV trackbars") 
+        ol_u_s = cv2.getTrackbarPos("Orange Line U_S", "Line HSV trackbars")
+        ol_u_v = cv2.getTrackbarPos("Orange Line U_V", "Line HSV trackbars")
+        
+        orange_line_lower_bound = np.array([ol_l_h, ol_l_s , ol_l_v ])
+        orange_line_upper_bound = np.array([ol_u_h, ol_u_s,  ol_u_v ])
 
     # Press 'q' to quit
     if DEVELOPING==1: 
