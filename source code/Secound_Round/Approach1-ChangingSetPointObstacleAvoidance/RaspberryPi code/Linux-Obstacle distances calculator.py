@@ -5,13 +5,13 @@
 #!/usr/bin/env python3
 
 # --- Configuration ---
-DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
+DEVELOPING   = 0 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
 
-CAM_TYPE = 1 # 0  = Raspicamera, 1  = webcam. 
+CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam. 
 FOCAL_LENGTH_PX = 535 #Focal length in pixels - 530 for micropack webcam
-SERIAL_READY = 0 #Whether a serial device is connected or not
+SERIAL_READY = 1 #Whether a serial device is connected or not
 CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam
 MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 COM_PORT = 4
@@ -128,11 +128,11 @@ upper_bound1_red = np.array([5, 255, 255])
 lower_bound2_red = np.array([175, 181, 70])
 upper_bound2_red = np.array([179, 255, 255])
 
-blue_line_lower_bound = np.array([99, 40 , 90 ])
-blue_line_upper_bound = np.array([135, 255, 255 ])
+blue_line_lower_bound = np.array([87, 48 , 0 ])
+blue_line_upper_bound = np.array([144, 255, 255 ])
 
-orange_line_lower_bound = np.array([2, 67, 59])
-orange_line_upper_bound = np.array([15, 233, 255 ])
+orange_line_lower_bound = np.array([6, 85, 0])
+orange_line_upper_bound = np.array([25, 255, 255 ])
 
 
 if TUNE_HSV==1 and DEVELOPING==1: 
@@ -183,11 +183,11 @@ if TUNE_HSV==1 and DEVELOPING==1:
     cv2.createTrackbar("Blue Line U_V", "Line HSV trackbars",blue_line_upper_bound[2], 255, nothing )
 
     cv2.createTrackbar("Orange Line L_H", "Line HSV trackbars", orange_line_lower_bound[0], 179, nothing)
-    cv2.createTrackbar("Orange Line L_S", "Line HSV trackbars", orange_line_lower_bound[1], 179, nothing)
-    cv2.createTrackbar("Orange Line L_V", "Line HSV trackbars", orange_line_lower_bound[2], 179, nothing)
+    cv2.createTrackbar("Orange Line L_S", "Line HSV trackbars", orange_line_lower_bound[1], 255, nothing)
+    cv2.createTrackbar("Orange Line L_V", "Line HSV trackbars", orange_line_lower_bound[2], 255, nothing)
     cv2.createTrackbar("Orange Line U_H", "Line HSV trackbars", orange_line_upper_bound[0], 179, nothing)
-    cv2.createTrackbar("Orange Line U_S", "Line HSV trackbars", orange_line_upper_bound[1], 179, nothing)
-    cv2.createTrackbar("Orange Line U_V", "Line HSV trackbars", orange_line_upper_bound[2], 179, nothing)
+    cv2.createTrackbar("Orange Line U_S", "Line HSV trackbars", orange_line_upper_bound[1], 255, nothing)
+    cv2.createTrackbar("Orange Line U_V", "Line HSV trackbars", orange_line_upper_bound[2], 255, nothing)
 
 # # --- Initialize camera ---
 if MACHINE == 0:  # Windows
