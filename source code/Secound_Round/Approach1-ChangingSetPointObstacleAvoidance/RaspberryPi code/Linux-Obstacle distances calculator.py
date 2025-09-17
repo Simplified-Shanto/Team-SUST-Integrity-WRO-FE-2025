@@ -11,11 +11,12 @@ DEVELOPING   = 1 # The code is in development mode, and we'll show processed ima
 
 CAM_TYPE = 1 # 0  = Raspicamera, 1  = webcam. 
 FOCAL_LENGTH_PX = 535 #Focal length in pixels - 530 for micropack webcam
-SERIAL_READY = 1 #Whether a serial device is connected or not
-CAMERA_INDEX = 1    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam
+SERIAL_READY = 0 #Whether a serial device is connected or not
+CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam
 MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 COM_PORT = 4
 TUNE_HSV = 1 # whether we want to tune the hsv color values for different image elements. 
+TUNE_VEHICLE_PARAMETERS = 0
 
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
@@ -84,20 +85,17 @@ def estimate_distance(perceived_dimension_px):
     
     
     # Define bounds for the general trackbar mask (works fine in bright light (day) condition ) 
-lower_bound_green = np.array([15, 60, 0])
-upper_bound_green = np.array([46, 255, 255])
+# lower_bound_green = np.array([15, 60, 0])
+# upper_bound_green = np.array([46, 255, 255])
 
-lower_bound1_red = np.array([170, 70, 0])
-upper_bound1_red = np.array([179, 255, 255])
+# lower_bound1_red = np.array([170, 70, 0])
+# upper_bound1_red = np.array([179, 255, 255])
 
-lower_bound2_red = np.array([0, 70, 00])
-upper_bound2_red = np.array([5, 255, 255])
+# lower_bound2_red = np.array([0, 70, 00])
+# upper_bound2_red = np.array([5, 255, 255])
 
-blue_line_lower_bound = np.array([101, 120 , 00 ])
-blue_line_upper_bound = np.array([167, 255, 255 ])
-
-orange_line_lower_bound = np.array([0, 0, 0 ])
-orange_line_upper_bound = np.array([179, 255, 255 ])
+# blue_line_lower_bound = np.array([101, 120 , 00 ])
+# blue_line_upper_bound = np.array([167, 255, 255 ])
 
 # orange_line_lower_bound = np.array([6, 60, 0 ])
 # orange_line_upper_bound = np.array([20, 255, 255 ])
@@ -120,35 +118,36 @@ orange_line_upper_bound = np.array([179, 255, 255 ])
 
 
 
-    # # Define bounds for the general trackbar mask (works fine in low light condition) 
-# lower_bound_green = np.array([25, 135, 50])
-# upper_bound_green = np.array([55, 255, 255])
+    # Define bounds for the general trackbar mask (works fine in low light condition) 
+lower_bound_green = np.array([25, 135, 50])
+upper_bound_green = np.array([55, 255, 255])
 
-# lower_bound1_red = np.array([0, 181, 70])
-# upper_bound1_red = np.array([5, 255, 255])
+lower_bound1_red = np.array([0, 181, 70])
+upper_bound1_red = np.array([5, 255, 255])
 
-# lower_bound2_red = np.array([175, 181, 70])
-# upper_bound2_red = np.array([179, 255, 255])
+lower_bound2_red = np.array([175, 181, 70])
+upper_bound2_red = np.array([179, 255, 255])
 
-# blue_line_lower_bound = np.array([99, 40 , 90 ])
-# blue_line_upper_bound = np.array([135, 255, 255 ])
+blue_line_lower_bound = np.array([99, 40 , 90 ])
+blue_line_upper_bound = np.array([135, 255, 255 ])
 
-# orange_line_lower_bound = np.array([2, 67, 59])
-# orange_line_upper_bound = np.array([15, 233, 255 ])
+orange_line_lower_bound = np.array([2, 67, 59])
+orange_line_upper_bound = np.array([15, 233, 255 ])
 
 
 if TUNE_HSV==1 and DEVELOPING==1: 
-    cv2.namedWindow("Vehicle Parameters", cv2.WINDOW_NORMAL)  # This window will be used to tune different parameters of the vehicle, like speed, pid values etc via serial commands
-    cv2.resizeWindow("Vehicle Parameters", 600, 400)
-    cv2.waitKey(100)
+    if TUNE_VEHICLE_PARAMETERS==1:
+        cv2.namedWindow("Vehicle Parameters", cv2.WINDOW_NORMAL)  # This window will be used to tune different parameters of the vehicle, like speed, pid values etc via serial commands
+        cv2.resizeWindow("Vehicle Parameters", 600, 400)
+        cv2.waitKey(100)
 
-    def changeVehicleSpeed(speed):
-        if SERIAL_READY: 
-            ser.write(f"s:{speed};".encode("utf-8"))
-        if DEVELOPING==1: 
-            print(f"Serial: s:{speed};")
-     
-    cv2.createTrackbar("Speed", "Vehicle Parameters", 100, 255, changeVehicleSpeed)
+        def changeVehicleSpeed(speed):
+            if SERIAL_READY: 
+                ser.write(f"s:{speed};".encode("utf-8"))
+            if DEVELOPING==1: 
+                print(f"Serial: s:{speed};")
+        
+        cv2.createTrackbar("Speed", "Vehicle Parameters", 100, 255, changeVehicleSpeed)
     def nothing(x):
         pass
      # --- Create General Trackbar Window
@@ -421,7 +420,9 @@ while True:
         for contour_id, contour in enumerate(contours_green):
             area = cv2.contourArea(contour)
             x,y,w,h = cv2.boundingRect(contour) #Assuming that the camera's lense surface is parallel to one of the side of the wro obstacle
+            
             if area > MIN_OBJECT_AREA and  w!=0: #If the distance reading has been reported once, we won't send it over and over again 
+                cv2.rectangle(green_masked_frame, (x, y), (x + w, y + h), (255, 255,0), 2)
                 obstaclePresent = 1
                 obstacleArea = math.floor(area)
                 break
@@ -461,6 +462,7 @@ while True:
             area = cv2.contourArea(contour)
             x,y,w,h = cv2.boundingRect(contour) #Assuming that the camera's lense surface is parallel to one of the side of the wro obstacle
             if area > MIN_OBJECT_AREA and  w!=0: #If the distance reading has been reported once, we won't send it over and over again 
+                cv2.rectangle(red_masked_frame, (x, y), (x + w, y + h), (255, 255,0), 2)
                 obstaclePresent = 1
                 obstacleArea = math.floor(area)
                 break
