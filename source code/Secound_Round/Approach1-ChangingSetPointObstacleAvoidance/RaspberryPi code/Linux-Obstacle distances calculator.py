@@ -20,7 +20,7 @@ TUNE_HSV = 0 # whether we want to tune the hsv color values for different image 
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
 MIN_OBJECT_AREA = 1500  # Minimum contour area to consider an object (adjust as needed)
-MIN_LINE_AREA = 500
+MIN_LINE_AREA = 1000
 
 if MACHINE == 1 and CAM_TYPE==0: 
     from picamera2 import Picamera2
@@ -83,20 +83,20 @@ def estimate_distance(perceived_dimension_px):
     return round((KNOWN_WIDTH_CM * FOCAL_LENGTH_PX) / perceived_dimension_px, 2)
 
     # Define bounds for the general trackbar mask (works fine in bright light (day) condition ) 
-lower_bound_green = np.array([15, 10, 0])
+lower_bound_green = np.array([15, 60, 0])
 upper_bound_green = np.array([46, 255, 255])
 1
-lower_bound1_red = np.array([165, 190, 0])
+lower_bound1_red = np.array([170, 70, 0])
 upper_bound1_red = np.array([179, 255, 255])
 
-lower_bound2_red = np.array([165, 190, 00])
-upper_bound2_red = np.array([179, 255, 255])
+lower_bound2_red = np.array([0, 70, 00])
+upper_bound2_red = np.array([5, 255, 255])
 
-blue_line_lower_bound = np.array([101, 82 , 00 ])
+blue_line_lower_bound = np.array([101, 120 , 00 ])
 blue_line_upper_bound = np.array([167, 255, 255 ])
 
-orange_line_lower_bound = np.array([155, 127, 0 ])
-orange_line_upper_bound = np.array([179, 255, 255 ])
+orange_line_lower_bound = np.array([6, 60, 0 ])
+orange_line_upper_bound = np.array([20, 255, 255 ])
 
 
     # # Define bounds for the general trackbar mask (works fine in low light(night) condition) 
@@ -270,9 +270,12 @@ while True:
         cropped_hsv   = cv2.cvtColor(cropped_frame, cv2.COLOR_BGR2HSV)
         blue_line_mask = cv2.inRange(cropped_hsv, blue_line_lower_bound, blue_line_upper_bound)
         blue_line_masked_frame = cv2.bitwise_and(cropped_frame, cropped_frame, mask = blue_line_mask)
-        
+        cv2.putText(blue_line_masked_frame, f"Blue Lines: {blue_line_count}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (250, 0, 0), 1)
+
         orange_line_mask = cv2.inRange(cropped_hsv, orange_line_lower_bound, orange_line_upper_bound)
         orange_line_masked_frame = cv2.bitwise_and(cropped_frame, cropped_frame, mask = orange_line_mask)
+        cv2.putText(orange_line_masked_frame, f"Orange Lines: {orange_line_count}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 1)
+
         combined_line_mask = cv2.bitwise_or(blue_line_masked_frame, orange_line_masked_frame)
 
         blue_line_contours, _ = cv2.findContours(blue_line_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -369,21 +372,26 @@ while True:
             bl_u_h = cv2.getTrackbarPos("Blue Line U_H", "Line HSV trackbars") 
             bl_u_s = cv2.getTrackbarPos("Blue Line U_S", "Line HSV trackbars")
             bl_u_v = cv2.getTrackbarPos("Blue Line U_V", "Line HSV trackbars")
+
             blue_line_lower_bound = np.array([bl_l_h, bl_l_s , bl_l_v ])
             blue_line_upper_bound = np.array([bl_u_h, bl_u_s,  bl_u_v ])
 
-            or_l_h = cv2.getTrackbarPos("Orange Line L_H", "Line HSV trackbars") #or_l_h = orange line lower hue
-            or_l_s = cv2.getTrackbarPos("Orange Line L_S", "Line HSV trackbars")
-            or_l_v = cv2.getTrackbarPos("Orange Line L_V", "Line HSV trackbars")
+            ol_l_h = cv2.getTrackbarPos("Orange Line L_H", "Line HSV trackbars") #ol_l_h = orange line lower hue
+            ol_l_s = cv2.getTrackbarPos("Orange Line L_S", "Line HSV trackbars")
+            ol_l_v = cv2.getTrackbarPos("Orange Line L_V", "Line HSV trackbars")
 
-            or_u_h = cv2.getTrackbarPos("Orange Line U_H", "Line HSV trackbars") #or_l_h = orange line lower hue
-            or_u_s = cv2.getTrackbarPos("Orange Line U_S", "Line HSV trackbars")
-            or_u_v = cv2.getTrackbarPos("Orange Line U_V", "Line HSV trackbars")
+            ol_u_h = cv2.getTrackbarPos("Orange Line U_H", "Line HSV trackbars") #ol_l_h = orange line lower hue
+            ol_u_s = cv2.getTrackbarPos("Orange Line U_S", "Line HSV trackbars")
+            ol_u_v = cv2.getTrackbarPos("Orange Line U_V", "Line HSV trackbars")
+
+            orange_line_lower_bound = np.array([ol_l_h, ol_l_s , ol_l_v ])
+            orange_line_upper_bound = np.array([ol_u_h, ol_u_s,  ol_u_v ])
         
 
         # Green object mask
         green_mask = cv2.inRange(hsv, lower_bound_green, upper_bound_green)
         green_masked_frame = cv2.bitwise_and(frame,frame,  mask = green_mask)
+        cv2.putText(green_masked_frame, "Green object", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2); 
         #Why frame is passed two times in the above function?  Because cv2.bitwise_and() is designed to combine two images (pixel by pixel using the AND operation). If you want to apply a mask on a single image (frame), you simply bitwise AND it with itself. That way: Each pixel P in the result becomes: P = frame AND frame → which is just P, but only where the mask is non-zero.
         contours_green, _ = cv2.findContours(
             green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE   
@@ -420,6 +428,7 @@ while True:
         red_mask2 = cv2.inRange(hsv, lower_bound2_red, upper_bound2_red)
         red_mask_combined = cv2.bitwise_or(red_mask1, red_mask2)
         red_masked_frame = cv2.bitwise_and(frame, frame, mask = red_mask_combined)
+        cv2.putText(red_masked_frame, "Red object", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2); 
         
         #blue_image = cv2.bitwise_and(frame, frame, mask = blue_mask) # In blue_image we only see the pixels that are white in blue_mask, so we only see the particular color of the hsv range, all other pixels are made black. 
         contours_red, _ = cv2.findContours(
@@ -459,8 +468,9 @@ while True:
                 cv2.putText(orange_line_masked_frame, "Clockwise", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 1)
             elif directionSentFlag==-1: 
                 cv2.putText(blue_line_masked_frame, "Anticlockwise", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 1)
-            cv2.putText(combined_line_mask, f"Blue Lines: {blue_line_count}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (250, 0, 0), 1)
-            cv2.putText(combined_line_mask, f"Orange Lines: {orange_line_count}", (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 1)
+
+           # cv2.putText(, "Final Frame", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 2);     
+          #  cv2.putText(combined_line_mask, f"Orange Lines: {orange_line_count}", (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 1)
 
             stackedImages = stackImages(0.6, ([frame, green_masked_frame, red_masked_frame],
                                                 [blue_line_masked_frame, orange_line_masked_frame, combined_line_mask]))
