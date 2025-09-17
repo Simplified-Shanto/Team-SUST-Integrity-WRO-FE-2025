@@ -5,7 +5,7 @@
 #!/usr/bin/env python3
 
 # --- Configuration ---
-DEVELOPING   = 0 # The code is in development mode, and we'll show processed images at different stages, 
+DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
 
@@ -487,9 +487,9 @@ while True:
         
         if DEVELOPING:  # Provide visual output of the program 
             if directionSentFlag==1: 
-                cv2.putText(orange_line_masked_frame, "Clockwise", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 1)
+                cv2.putText(orange_line_masked_frame, "Clockwise", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 2)
             elif directionSentFlag==-1: 
-                cv2.putText(blue_line_masked_frame, "Anticlockwise", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 1)
+                cv2.putText(blue_line_masked_frame, "Anticlockwise", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
            # cv2.putText(, "Final Frame", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 2);     
           #  cv2.putText(combined_line_mask, f"Orange Lines: {orange_line_count}", (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 1)
