@@ -319,7 +319,7 @@ while True:
                             ser.write("b;".encode('utf-8'))
                         if DEVELOPING:
                             print("Serial: b;")
-                        directionSentFlag = -1  # Round is anticlockwise
+                        directionSentFlag = 1  # Round is anticlockwise
                
                         
             #Checking for orange line
@@ -335,7 +335,7 @@ while True:
                             ser.write("o;".encode('utf-8'))
                         if DEVELOPING: 
                             print("Serial: o;")
-                        directionSentFlag = 1 # Round is clockwise
+                        directionSentFlag = -1 # Round is clockwise
             
             # Checking for lap completion 
             if orange_line_count==12:
@@ -486,9 +486,9 @@ while True:
 
         
         if DEVELOPING:  # Provide visual output of the program 
-            if directionSentFlag==1: 
+            if directionSentFlag==-1: 
                 cv2.putText(orange_line_masked_frame, "Clockwise", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 2)
-            elif directionSentFlag==-1: 
+            elif directionSentFlag==1: 
                 cv2.putText(blue_line_masked_frame, "Anticlockwise", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
            # cv2.putText(, "Final Frame", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 2);     

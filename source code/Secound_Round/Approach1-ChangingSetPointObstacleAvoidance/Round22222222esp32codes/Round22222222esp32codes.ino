@@ -35,7 +35,7 @@ double dynamicSetPoint = 0;  //This setpoint is assigned after determining the r
 int setPointMultiplier = 1;  // -1 = round is clockwise 1 = round is anticlockwise
 int terminalDistanceThreshold = 200;
 short restrictedSteer = 35;
-short unrestrictedSteer = 45;
+short unrestrictedSteer = 40;
 int steerAngle = restrictedSteer;  // steerAngle = maximum angle used for steering currently
 
 
@@ -43,7 +43,7 @@ int steerAngle = restrictedSteer;  // steerAngle = maximum angle used for steeri
 void setup() {
   Serial.begin(115200);
   preferences.begin("wrobot", false);
-  preferences.clear();  //Only uncomment it when you have the first round code uploaded currently. Upload this code. Then comment this line again.
+ // preferences.clear();  //Only uncomment it when you have the first round code uploaded currently. Upload this code. Then comment this line again.
   lineInterval = preferences.getInt("lineInterval", lineInterval);
   stopDelay = preferences.getInt("stopDelay", stopDelay);
   Kp = preferences.getDouble("Kp", Kp);
@@ -97,35 +97,7 @@ void loop() {
   leftDistance = leftSonar.ping_cm();
   frontDistance = frontSonar.ping_cm();
   /*
-    if(setPoint==0) //There's no obstacle in the vision range. (but we should only check it, while considering the frontDistance, and not in other case. )
-    {
 
-    if (leftDistance == 0 || (leftDistance!=0 && (frontDistance > 0 && frontDistance < 60 ))) {  //Either any sensor feels a long gap, or the vehicle is very close to the wall, take turning action
-                                                                          //Make steering freedom proportional to the frontdistance.
-      if (frontDistance > 0 && frontDistance < 60) {   //Avoiding taking extra turn when the vehicle has already turned, and is now parallel to the wall. 
-        leftDistance = terminalDistanceThreshold;
-      } else {  // The vehicle has already turned enough, and is parallel to the wall, which we understand by the front sensor's zero reading, so assume there's a wall on the right side. 
-        leftDistance = 100 - rightDistance;
-      }
-
-    } else if (rightDistance == 0 || (rightDistance!=0 && (frontDistance > 0 && frontDistance < 60))) {
-
-    if (frontDistance > 0 && frontDistance < 60) {
-        rightDistance = terminalDistanceThreshold;
-      } else {
-        rightDistance = 100 - leftDistance; // If the vehicle is trying to turn from one extreme side of the tunnel, then we'll be turning only when there's a wall ahead, if there's free space, then we'll stop the turning attempt. 
-      }
-
-    }
-    }
-    else //There's some obstacle in the vision range. 
-    {
-        if (leftDistance == 0) {
-      leftDistance = terminalDistanceThreshold;
-    } else if (rightDistance == 0) {
-      rightDistance = terminalDistanceThreshold;
-    }
-    }
 
     There's a problem with the following conditioning, if anyhow side sonar fails to be zero when its time to turn, the vehicle will always take left turn. 
       
@@ -140,21 +112,6 @@ void loop() {
       The counter-clockwise turning problem is arising from the fact that, the frontDistance condition checking is being true before the side sonar being zero condition is hitting the ground. 
       We can also try to solve the problem first by reducing the front distance threshold. So we'll be primarily relying on the side sonars for turning and then in any case if it fails, 
       then the front distance checking will start the turning attempt. With this combine the one side turning only mechanism at corners, and things should work properly. 
-      
-
-
-      if(setPoint==0) //There's no obstacle in the vision range. (but we should only check it, while considering the frontDistance, and not in other case. )
-      {
-      if (leftDistance == 0 || (leftDistance!=0 && (frontDistance > 0 && frontDistance < frontDistanceThreshold ))) {  //Either any sensor feels a long gap, or the vehicle is very close to the wall, take turning action
-                                                                            //Make steering freedom proportional to the frontdistance.
-        // if (frontDistance > 0 && frontDistance < 60) {   //Avoiding taking extra turn when the vehicle has already turned, and is now parallel to the wall. 
-        //   leftDistance = terminalDistanceThreshold;
-        // } else {  // The vehicle has already turned enough, and is parallel to the wall, which we understand by the front sensor's zero reading, so assume there's a wall on the right side. 
-        //   leftDistance = 100 - rightDistance;
-        // }
-        leftDistance = terminalDistanceThreshold; 
-
-      } else 
 
   */
 
@@ -165,17 +122,15 @@ void loop() {
   {
     steerAngle = unrestrictedSteer;
     if (setPoint != 0) {
-      //do nothing, steering will be done using the changed setPoint
+       // We need to devise some logic here, to avoid wall hits, overturning etc things when the steering is still being done by the changed setpoint. 
     } else if (rightDistance == 0 && leftDistance != 0)  // 1 0
     {
       rightDistance = terminalDistanceThreshold;
       digitalWrite(buzzerPin, LOW);
-      digitalWrite(ledPin, LOW);
     } else if (leftDistance == 0 && rightDistance != 0)  //0 1
     {
       leftDistance = terminalDistanceThreshold;
       digitalWrite(buzzerPin, LOW);
-      digitalWrite(ledPin, LOW);
     } else if (leftDistance != 0 && rightDistance != 0)  //1 1
     {
       if (leftDistance > rightDistance) {
@@ -183,7 +138,6 @@ void loop() {
       } else if (rightDistance > leftDistance) {
         rightDistance = terminalDistanceThreshold;
       }
-      digitalWrite(ledPin, HIGH);
       digitalWrite(buzzerPin, LOW);
     } else if (leftDistance == 0 && rightDistance == 0) {  //0 0 Both sonar sensor is reading zero, so we are resorting to the round direction for taking turns.
       if (gameStarted == 1) {                              // Notifying that both sensor is currently reading zero.
@@ -231,18 +185,10 @@ void loop() {
 void changeSetPoint() {
   if (redObstacleDistance == 0 && greenObstacleDistance == 0) {
     setPoint = 0;
-    halfAngleRange = restrictedSteer;
-    digitalWrite(ledPin, LOW);
-    digitalWrite(buzzerPin, LOW);
-
   } else if (redObstacleDistance > greenObstacleDistance) {
-    setPoint = 67 * setPointMultiplier;  //Green obstacle is near the vehicle, so it will try to follow the left wall
-    digitalWrite(ledPin, HIGH);          // Indicator for detecting red obstacle.
-    digitalWrite(buzzerPin, LOW);
+    setPoint = 60 ;  //Green obstacle is near the vehicle, so it will try to follow the left wall
   } else if (redObstacleDistance < greenObstacleDistance) {
-    setPoint = -67 * setPointMultiplier;
-    digitalWrite(buzzerPin, HIGH);
-    digitalWrite(ledPin, LOW);
+    setPoint = -60 ;
   }
 }
 
