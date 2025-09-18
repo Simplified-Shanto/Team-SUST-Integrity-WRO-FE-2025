@@ -9,14 +9,15 @@ DEVELOPING   = 1 # The code is in development mode, and we'll show processed ima
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
 
-CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam. 
+CAM_TYPE = 1 # 0  = Raspicamera, 1  = webcam. 
 FOCAL_LENGTH_PX = 535 #Focal length in pixels - 530 for micropack webcam
-SERIAL_READY = 1 #Whether a serial device is connected or not
+SERIAL_READY = 0 #Whether a serial device is connected or not
 CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam
-MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
+MACHINE = 0  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 COM_PORT = 4
-TUNE_HSV = 1 # whether we want to tune the hsv color values for different image elements. 
+TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
 TUNE_VEHICLE_PARAMETERS = 0
+SHOW_LINE_ANALYSIS = 0
 
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
@@ -32,7 +33,7 @@ import time
 import math
 import os
 
-KNOWN_WIDTH_CM = 5.0  ## Here we are using teh WRO future engineers game obstacle as sample object Object's physical width # KNOWN_WIDTH_CM should correspond to the 'w' (width)  of the object
+KNOWN_HEIGHT_CM = 10.0  ## Here we are using teh WRO future engineers game obstacle as sample object Object's physical width # KNOWN_WIDTH_CM should correspond to the 'w' (width)  of the object
 KNOWN_DISTANCE_CM = 30
 
 if SERIAL_READY==1 and MACHINE == 1:
@@ -76,31 +77,32 @@ def stackImages(scale,imgArray):
         hor= np.hstack(imgArray)
         ver = hor
     return ver
-def estimate_distance(perceived_dimension_px):
+def estimate_distance(perceived_dimension_px): # Input the height of the bounding box or the rectangular contour detected. 
     """Estimates distance to an object given its perceived dimension in pixels.
     Uses KNOWN_WIDTH_CM and FOCAL_LENGTH_PX from global config."""
     if perceived_dimension_px == 0:
         return 0.0
-    return round((KNOWN_WIDTH_CM * FOCAL_LENGTH_PX) / perceived_dimension_px, 2)
+    #return round((KNOWN_HEIGHT_CM * FOCAL_LENGTH_PX) / perceived_dimension_px, 2)
+    return round((KNOWN_DISTANCE_CM * perceived_dimension_px) / KNOWN_HEIGHT_CM) # Uncomment this one to find the focal length of the camera by placing the object at the known distance
     
     
-    # Define bounds for the general trackbar mask (works fine in bright light (day) condition ) 
-# lower_bound_green = np.array([15, 60, 0])
-# upper_bound_green = np.array([46, 255, 255])
+   # Define bounds for the general trackbar mask (works fine in bright light (day) condition with webcam ) 
+lower_bound_green = np.array([15, 60, 0])
+upper_bound_green = np.array([46, 255, 255])
 
-# lower_bound1_red = np.array([170, 70, 0])
-# upper_bound1_red = np.array([179, 255, 255])
+lower_bound1_red = np.array([170, 70, 0])
+upper_bound1_red = np.array([179, 255, 255])
 
-# lower_bound2_red = np.array([0, 70, 00])
-# upper_bound2_red = np.array([5, 255, 255])
+lower_bound2_red = np.array([0, 70, 00])
+upper_bound2_red = np.array([5, 255, 255])
 
-# blue_line_lower_bound = np.array([101, 120 , 00 ])
-# blue_line_upper_bound = np.array([167, 255, 255 ])
+blue_line_lower_bound = np.array([101, 120 , 00 ])
+blue_line_upper_bound = np.array([167, 255, 255 ])
 
-# orange_line_lower_bound = np.array([6, 60, 0 ])
-# orange_line_upper_bound = np.array([20, 255, 255 ])
+orange_line_lower_bound = np.array([6, 60, 0 ])
+orange_line_upper_bound = np.array([20, 255, 255 ])
 
-    # # Define bounds for the general trackbar mask (works fine in bright light condition ) 
+    # # Define bounds for the general trackbar mask (works fine in bright light condition with raspi cam ) 
 # lower_bound_green = np.array([15, 10, 0])
 # upper_bound_green = np.array([46, 255, 255])
 # 1
@@ -118,21 +120,21 @@ def estimate_distance(perceived_dimension_px):
 
 
 
-    # Define bounds for the general trackbar mask (works fine in low light condition) 
-lower_bound_green = np.array([25, 135, 50])
-upper_bound_green = np.array([55, 255, 255])
+    # Define bounds for the general trackbar mask (works fine in low light condition with Raspi cam) 
+# lower_bound_green = np.array([25, 135, 50])
+# upper_bound_green = np.array([55, 255, 255])
 
-lower_bound1_red = np.array([0, 181, 70])
-upper_bound1_red = np.array([5, 255, 255])
+# lower_bound1_red = np.array([0, 181, 70])
+# upper_bound1_red = np.array([5, 255, 255])
 
-lower_bound2_red = np.array([175, 181, 70])
-upper_bound2_red = np.array([179, 255, 255])
+# lower_bound2_red = np.array([175, 181, 70])
+# upper_bound2_red = np.array([179, 255, 255])
 
-blue_line_lower_bound = np.array([87, 48 , 0 ])
-blue_line_upper_bound = np.array([144, 255, 255 ])
+# blue_line_lower_bound = np.array([87, 48 , 0 ])
+# blue_line_upper_bound = np.array([144, 255, 255 ])
 
-orange_line_lower_bound = np.array([6, 85, 0])
-orange_line_upper_bound = np.array([25, 255, 255 ])
+# orange_line_lower_bound = np.array([6, 85, 0])
+# orange_line_upper_bound = np.array([25, 255, 255 ])
 
 
 if TUNE_HSV==1 and DEVELOPING==1: 
@@ -282,29 +284,24 @@ while True:
         elif CAM_TYPE==0: 
             frame = picam2.capture_array()
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-
         frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         cropped_frame = frame[100:400, 150:590]
         cropped_hsv   = cv2.cvtColor(cropped_frame, cv2.COLOR_BGR2HSV)
+
         blue_line_mask = cv2.inRange(cropped_hsv, blue_line_lower_bound, blue_line_upper_bound)
         blue_line_masked_frame = cv2.bitwise_and(cropped_frame, cropped_frame, mask = blue_line_mask)
-        cv2.putText(blue_line_masked_frame, f"Blue Lines: {blue_line_count}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (250, 0, 0), 1)
-
+        #cv2.putText(blue_line_masked_frame, f"Blue Lines: {blue_line_count}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (250, 0, 0), 1)
         orange_line_mask = cv2.inRange(cropped_hsv, orange_line_lower_bound, orange_line_upper_bound)
         orange_line_masked_frame = cv2.bitwise_and(cropped_frame, cropped_frame, mask = orange_line_mask)
-        cv2.putText(orange_line_masked_frame, f"Orange Lines: {orange_line_count}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 1)
-
-        combined_line_mask = cv2.bitwise_or(blue_line_masked_frame, orange_line_masked_frame)
-
+        #cv2.putText(orange_line_masked_frame, f"Orange Lines: {orange_line_count}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 1)
         blue_line_contours, _ = cv2.findContours(blue_line_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         orange_line_contours, _ = cv2.findContours(orange_line_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
          #If we haven't send the round direction to the LLM yet
             #This basically measures, which color of threshold area do we get first
             #Checking for blue line
         current_time = time.time()*1000
-        
+    
         if blue_line_count!=-1:  # We'll only do the following processes when blue_line_count is set to zero by pressing the game start button in the vehicle and receiving serial command 'r' from the LLMC. The reason is avoiding early count of the lines by environmental noise before the round has started. 
             for contour_index, contour in enumerate(blue_line_contours): 
                 area = cv2.contourArea(contour)
@@ -406,11 +403,11 @@ while True:
             orange_line_lower_bound = np.array([ol_l_h, ol_l_s , ol_l_v ])
             orange_line_upper_bound = np.array([ol_u_h, ol_u_s,  ol_u_v ])
         
-
         # Green object mask
         green_mask = cv2.inRange(hsv, lower_bound_green, upper_bound_green)
         green_masked_frame = cv2.bitwise_and(frame,frame,  mask = green_mask)
-        cv2.putText(green_masked_frame, "Green object", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2); 
+        if TUNE_HSV==1:
+            cv2.putText(green_masked_frame, "Green object", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2); 
         #Why frame is passed two times in the above function?  Because cv2.bitwise_and() is designed to combine two images (pixel by pixel using the AND operation). If you want to apply a mask on a single image (frame), you simply bitwise AND it with itself. That way: Each pixel P in the result becomes: P = frame AND frame → which is just P, but only where the mask is non-zero.
         contours_green, _ = cv2.findContours(
             green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE   
@@ -420,7 +417,6 @@ while True:
         for contour_id, contour in enumerate(contours_green):
             area = cv2.contourArea(contour)
             x,y,w,h = cv2.boundingRect(contour) #Assuming that the camera's lense surface is parallel to one of the side of the wro obstacle
-            
             if area > MIN_OBJECT_AREA and  w!=0: #If the distance reading has been reported once, we won't send it over and over again 
                 cv2.rectangle(green_masked_frame, (x, y), (x + w, y + h), (255, 255,0), 2)
                 obstaclePresent = 1
@@ -443,21 +439,20 @@ while True:
                             print("Serial: G:0; ")
                         serialFlag2 = 1
 
-
         # 1. Detect Red objects
         red_mask1 = cv2.inRange(hsv, lower_bound1_red, upper_bound1_red)
         red_mask2 = cv2.inRange(hsv, lower_bound2_red, upper_bound2_red)
         red_mask_combined = cv2.bitwise_or(red_mask1, red_mask2)
         red_masked_frame = cv2.bitwise_and(frame, frame, mask = red_mask_combined)
-        cv2.putText(red_masked_frame, "Red object", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2); 
+        if TUNE_HSV==1:
+            cv2.putText(red_masked_frame, "Red object", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2); 
         
-        #blue_image = cv2.bitwise_and(frame, frame, mask = blue_mask) # In blue_image we only see the pixels that are white in blue_mask, so we only see the particular color of the hsv range, all other pixels are made black. 
         contours_red, _ = cv2.findContours(
-            red_mask_combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE   
-        )
-
+            red_mask_combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
         obstaclePresent = 0
         obstacleArea = 0
+
         for contour_id, contour in enumerate(contours_red):
             area = cv2.contourArea(contour)
             x,y,w,h = cv2.boundingRect(contour) #Assuming that the camera's lense surface is parallel to one of the side of the wro obstacle
@@ -484,19 +479,27 @@ while True:
                         serialFlag = 1 #We won't send this "No blue object in vision range" continuosly, we'll just send it once
 
 
-        
         if DEVELOPING:  # Provide visual output of the program 
-            if directionSentFlag==-1: 
-                cv2.putText(orange_line_masked_frame, "Clockwise", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 2)
-            elif directionSentFlag==1: 
-                cv2.putText(blue_line_masked_frame, "Anticlockwise", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            if SHOW_LINE_ANALYSIS:
+                combined_line_masked_frame = cv2.bitwise_or(blue_line_masked_frame, orange_line_masked_frame)
+                cv2.imshow("Line Frame", combined_line_masked_frame)
 
-           # cv2.putText(, "Final Frame", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 2);     
-          #  cv2.putText(combined_line_mask, f"Orange Lines: {orange_line_count}", (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 1)
+            combined_obstacle_masked_frame = cv2.bitwise_or(green_masked_frame, red_masked_frame)
+            cv2.line(combined_obstacle_masked_frame, (int(FRAME_WIDTH/2), 0), (int(FRAME_WIDTH/2), int(FRAME_HEIGHT)), (0, 165, 255), 2)
+            cv2.imshow("Obstacle Frame", combined_obstacle_masked_frame)
+            
 
-            stackedImages = stackImages(0.6, ([frame, green_masked_frame, red_masked_frame],
-                                                [blue_line_masked_frame, orange_line_masked_frame, combined_line_mask]))
-            cv2.imshow("Frames", stackedImages)
+            if TUNE_HSV==1: # We'll only show those segmented staffs only while tuning hsv color values. Otherwise a single unified view will be allowed. 
+                if directionSentFlag==-1: 
+                    cv2.putText(orange_line_masked_frame, "Clockwise", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 2)
+                elif directionSentFlag==1: 
+                    cv2.putText(blue_line_masked_frame, "Anticlockwise", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+
+                stackedImages = stackImages(0.6, ([frame, green_masked_frame, red_masked_frame],
+                                                    [blue_line_masked_frame, orange_line_masked_frame, combined_line_masked_frame]))
+                cv2.imshow("Stacked Frames", stackedImages)
+
+
             key = cv2.waitKey(1)  #Purpose of the above expression: It waits for a speciefied amount of time(in milliseconds) for a key event to occur. This small delay is crucial when processing video streams, as it allows the system to display each frame for a brief period, creating the illusion of continuosu motion. Without this delay, the frames would be processed and displayed so quickly that the video would appear as a blur or not be visible at all. And in most cases, the window will have "Not responding" problem and ultimately crash. During this delay, cv2.waitKey(1) also checks if any key has been pressed. If any key has been prssed. If a key is pressed within the 1-millisecond window, it returns the ascii value fo that pressed key. If no key is pressed within that time, it returns -1. 
             if key == ord('q'): # Stops the execution of the entire python program
                 if SERIAL_READY==1:
