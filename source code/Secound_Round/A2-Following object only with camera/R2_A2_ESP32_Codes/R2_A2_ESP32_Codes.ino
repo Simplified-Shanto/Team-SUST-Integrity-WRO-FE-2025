@@ -99,9 +99,12 @@ void loop() {
   {
     digitalWrite(ledPin, LOW); 
   }
-  // rightDistance = rightSonar.ping_cm();
-  // leftDistance = leftSonar.ping_cm();
-  // frontDistance = frontSonar.ping_cm();
+  rightDistance = rightSonar.ping_cm();
+  leftDistance = leftSonar.ping_cm();
+  frontDistance = frontSonar.ping_cm();
+
+  if(rightDistance < 8) { steering_servo.write(leftAngle); } // To avoid extreme collissions. 
+  else if(leftDistance < 8) { steering_servo.write(rightAngle);  }
   /*
 
 
@@ -252,7 +255,12 @@ void handleSerialCommand(String command) {
         changeSetPoint();  //Fix the sign of the setpoint
         break;
       case 'R':  //Red obstacle's distance
-        obstacleError = int(constant_value);
+        obstacleError = 0; //Disabling the pid correction 
+        int angle = midAngle + maxSteer*float((35 - constant_value)/constant_value)
+        if(angle >= leftAngle && angle <= rightAngle)
+        {
+          steering_servo.write(angle); 
+        }
         // redObstacleDistance = int(constant_value);  // obstacle distance will be 0 when it is beyond the vision range of the vehicle
         // changeSetPoint();
         break;
@@ -260,6 +268,10 @@ void handleSerialCommand(String command) {
         greenObstacleDistance = int(constant_value);  // obstacle distance will be 0 when it is beyond the vision range of the vehicle
         changeSetPoint();
         break;
+      case 'E':
+        obstacleError = int(constant_value);
+        break; 
+
 
       case 'p':  //Proportional of PID
         Kp = constant_value;

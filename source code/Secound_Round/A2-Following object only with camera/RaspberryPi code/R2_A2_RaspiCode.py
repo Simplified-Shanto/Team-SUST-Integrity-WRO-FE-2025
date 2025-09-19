@@ -476,24 +476,18 @@ while True:
                 obstaclePresent = 1
                 break
 
-        if obstaclePresent and distance > frontDistance:
-               # if serialFlag==1:
-                    if SERIAL_READY==1: 
-                        if carStopped==1: 
-                            ser.write("y".encode('utf-8'))
-                            if DEVELOPING: print("Serial: y")
-                            carStopped = 0
-                        ser.write(f"R:{error};".encode('utf-8'))
+        if obstaclePresent:
+               if SERIAL_READY==1: 
+                    if distance < frontDistance: 
+                        ser.write(f"R:{distance}".encode('utf-8'))
+                    elif distance > frontDistance: 
+                        ser.write(f"E:{error};".encode('utf-8'))
 
                     if DEVELOPING:
                         print(f"Serial: R:{error};")
  
-        elif distance < frontDistance and carStopped==0: 
-            if SERIAL_READY==1: 
-                ser.write(f"x".encode("utf-8"))
-            if DEVELOPING: 
-                print("Serial: x")
-            carStopped = 1
+           
+
         #            serialFlag = 0  #The object is present in front of the vehicle, now we can send a 0 distance while it goes beyond the vision range. 
         # elif serialFlag ==0: # Camera is not encountering any blue object and we haven't reported it to the LLM 
         #                 if SERIAL_READY==1: 
