@@ -38,7 +38,7 @@ int terminalDistanceThreshold = 200;
 short restrictedSteer = 35;
 short unrestrictedSteer = 45;
 int steerAngle = unrestrictedSteer;  // steerAngle = maximum angle used for steering currently
-
+int angle; 
 
 
 void setup() {
@@ -103,8 +103,6 @@ void loop() {
   leftDistance = leftSonar.ping_cm();
   frontDistance = frontSonar.ping_cm();
 
-  if(rightDistance < 8) { steering_servo.write(leftAngle); } // To avoid extreme collissions. 
-  else if(leftDistance < 8) { steering_servo.write(rightAngle);  }
   /*
 
 
@@ -167,23 +165,29 @@ void loop() {
 
 
   handleButtonPress();
-  integralError += error;
-  // optional: limit integral to prevent windup
-  if (integralError > 1000) integralError = 1000;
-  if (integralError < -1000) integralError = -1000;
+  // integralError += error;
+  // // optional: limit integral to prevent windup
+  // if (integralError > 1000) integralError = 1000;
+  // if (integralError < -1000) integralError = -1000;
   //   67         84,             7   -> When the vehicle follows the right wall
   //  -67         7 ,            84   -> When the vehicle follows the left wall
   value = leftDistance - rightDistance;
   sonarError = value - setPoint;
 
-  PIDangle = sonarError * Kp
-             + (error - lastError) * Kd
-             + (obstacleError * Ki);
-  lastError = error;
+    PIDangle = obstacleError * Kp
+              + (obstacleError - lastError) * Kd;
+           
+    lastError = obstacleError;
+
   if (editParameter == 1) { configureParameters(); }
 
   if (gameStarted == 1) {
+  if(rightDistance < 8) { steering_servo.write(leftAngle);  delay(10);  } // To avoid extreme collissions. 
+  else if(leftDistance < 8) { steering_servo.write(rightAngle);  delay(10);  }
+  else
+  {
     writeAngleToServo();
+  }
   }
 }
 
@@ -256,7 +260,7 @@ void handleSerialCommand(String command) {
         break;
       case 'R':  //Red obstacle's distance
         obstacleError = 0; //Disabling the pid correction 
-        int angle = midAngle + maxSteer*float((35 - constant_value)/constant_value)
+        angle = midAngle + maxSteer*float((35 - constant_value)/constant_value);
         if(angle >= leftAngle && angle <= rightAngle)
         {
           steering_servo.write(angle); 
@@ -281,6 +285,7 @@ void handleSerialCommand(String command) {
         Kd = constant_value;
         preferences.putDouble("Kd", Kd);
         break;
+
       case 's':  //Speed of vehicle
         forwardSpeed = int(constant_value);
         preferences.putInt("speed", forwardSpeed);

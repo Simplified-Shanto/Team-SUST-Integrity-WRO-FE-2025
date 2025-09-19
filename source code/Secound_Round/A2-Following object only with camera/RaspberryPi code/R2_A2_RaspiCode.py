@@ -13,7 +13,7 @@ DEVELOPING   = 1 # The code is in development mode, and we'll show processed ima
 SERIAL_READY = 1 #Whether a serial device is connected or not
 CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam.
 FOCAL_LENGTH_PX = 335 #Focal length in pixels - 530 for micropack webcam 335 - raspi cam
-BRIGHT_LIGHT = 1 # Bright_light = 1 indicates that we are testing things in bright daylight, bright_light = 0 means that we are testing this thing in night under led lights
+BRIGHT_LIGHT = 0 # Bright_light = 1 indicates that we are testing things in bright daylight, bright_light = 0 means that we are testing this thing in night under led lights
 TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
 
 CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam
