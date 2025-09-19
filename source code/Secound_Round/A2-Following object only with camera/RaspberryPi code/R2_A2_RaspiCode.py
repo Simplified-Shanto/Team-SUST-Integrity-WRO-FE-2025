@@ -27,7 +27,7 @@ FRAME_CENTER_X = FRAME_WIDTH/2
 
 MIN_OBJECT_AREA = 500  # Minimum contour area to consider an object (adjust as needed)
 MIN_LINE_AREA = 1000
-frontDistance = 45
+
 
 if MACHINE == 1 and CAM_TYPE==0: 
     from picamera2 import Picamera2
@@ -235,7 +235,8 @@ blue_line_timer = time.time() * 1000 # Getting the total execution time in milli
 orange_line_timer = blue_line_timer
 orange_line_count = -1
 
-setPoint = 0 # We want the object to be in the center of the frame. 
+setPoint = 120 # We want the object to be in the center of the frame. 
+frontDistance = 35
 carStopped = 0 # This scripts assumes that, the car is in motion in the beginning of this script. 
 
 
@@ -478,14 +479,17 @@ while True:
 
         if obstaclePresent:
                if SERIAL_READY==1: 
-                    if distance < frontDistance: 
-                        ser.write(f"Z:{distance};".encode('utf-8'))
-                        if DEVELOPING:
-                            print(f"Serial: Z:{distance};")
-                    elif distance > frontDistance: 
+                    # if distance < frontDistance: 
+                        # ser.write(f"Z:{distance};".encode('utf-8'))
+                        # if DEVELOPING:
+                            # print(f"Serial: Z:{distance};")
+                    # elif distance > frontDistance: 
                         ser.write(f"E:{error};".encode('utf-8'))
                         if DEVELOPING:
                             print(f"Serial: E:{error};")
+        else: 
+            ser.write("E:0;".encode('utf-8')); 
+        
 
  
            
