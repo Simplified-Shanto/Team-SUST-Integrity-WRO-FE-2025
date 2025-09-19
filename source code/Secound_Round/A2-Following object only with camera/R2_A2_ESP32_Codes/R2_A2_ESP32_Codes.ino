@@ -103,6 +103,8 @@ void loop() {
   leftDistance = leftSonar.ping_cm();
   frontDistance = frontSonar.ping_cm();
 
+
+
   /*
 
 
@@ -125,43 +127,43 @@ void loop() {
 
   //Mechanism 2:
 
-  // if (setPoint != 0 || rightDistance == 0 || leftDistance == 0 || (frontDistance != 0 && frontDistance < frontDistanceThreshold))  //Take a turning action on any of these events.
-  // {
-  //   steerAngle = unrestrictedSteer;
-  //   if (setPoint != 0) {
-  //      // We need to devise some logic here, to avoid wall hits, overturning etc things when the steering is still being done by the changed setpoint.
-  //   } else if (rightDistance == 0 && leftDistance != 0)  // 1 0
-  //   {
-  //     rightDistance = terminalDistanceThreshold;
-  //     digitalWrite(buzzerPin, LOW);
-  //   } else if (leftDistance == 0 && rightDistance != 0)  //0 1
-  //   {
-  //     leftDistance = terminalDistanceThreshold;
-  //     digitalWrite(buzzerPin, LOW);
-  //   } else if (leftDistance != 0 && rightDistance != 0)  //1 1
-  //   {
-  //     if (leftDistance > rightDistance) {
-  //       leftDistance = terminalDistanceThreshold;
-  //     } else if (rightDistance > leftDistance) {
-  //       rightDistance = terminalDistanceThreshold;
-  //     }
-  //     digitalWrite(buzzerPin, LOW);
-  //   } else if (leftDistance == 0 && rightDistance == 0) {  //0 0 Both sonar sensor is reading zero, so we are resorting to the round direction for taking turns.
-  //     if (gameStarted == 1) {                              // Notifying that both sensor is currently reading zero.
-  //       digitalWrite(buzzerPin, HIGH);
-  //     }
-  //     if (setPointMultiplier == -1) {  //cw round
-  //       rightDistance = terminalDistanceThreshold;
-  //     } else if (setPointMultiplier == 1) {  //ccw round
-  //       leftDistance = terminalDistanceThreshold;
-  //     } else if (setPointMultiplier == 0)  // Round direction haven't been determined yet
-  //     {
-  //       //Do nothing, we don't know what to do now.
-  //     }
-  //   }
-  // } else {
-  //   steerAngle = restrictedSteer;
-  // }
+  if (setPoint != 0 || rightDistance == 0 || leftDistance == 0 || (frontDistance != 0 && frontDistance < frontDistanceThreshold))  //Take a turning action on any of these events.
+  {
+    steerAngle = unrestrictedSteer;
+    if (setPoint != 0) {
+       // We need to devise some logic here, to avoid wall hits, overturning etc things when the steering is still being done by the changed setpoint.
+    } else if (rightDistance == 0 && leftDistance != 0)  // 1 0
+    {
+      rightDistance = terminalDistanceThreshold;
+      digitalWrite(buzzerPin, LOW);
+    } else if (leftDistance == 0 && rightDistance != 0)  //0 1
+    {
+      leftDistance = terminalDistanceThreshold;
+      digitalWrite(buzzerPin, LOW);
+    } else if (leftDistance != 0 && rightDistance != 0)  //1 1
+    {
+      if (leftDistance > rightDistance) {
+        leftDistance = terminalDistanceThreshold;
+      } else if (rightDistance > leftDistance) {
+        rightDistance = terminalDistanceThreshold;
+      }
+      digitalWrite(buzzerPin, LOW);
+    } else if (leftDistance == 0 && rightDistance == 0) {  //0 0 Both sonar sensor is reading zero, so we are resorting to the round direction for taking turns.
+      if (gameStarted == 1) {                              // Notifying that both sensor is currently reading zero.
+        digitalWrite(buzzerPin, HIGH);
+      }
+      if (setPointMultiplier == -1) {  //cw round
+        rightDistance = terminalDistanceThreshold;
+      } else if (setPointMultiplier == 1) {  //ccw round
+        leftDistance = terminalDistanceThreshold;
+      } else if (setPointMultiplier == 0)  // Round direction haven't been determined yet
+      {
+        //Do nothing, we don't know what to do now.
+      }
+    }
+  } else {
+    steerAngle = restrictedSteer;
+  }
 
 
   handleButtonPress();
@@ -175,18 +177,24 @@ void loop() {
   sonarError = value - setPoint;
 
     PIDangle = obstacleError * Kp
-              + (obstacleError - lastError) * Kd;
+              + (obstacleError - lastError) * Kd + sonarError * Ki;
            
     lastError = obstacleError;
 
   if (editParameter == 1) { configureParameters(); }
 
   if (gameStarted == 1) {
-  if(rightDistance < 8) { steering_servo.write(leftAngle);  delay(10);  } // To avoid extreme collissions. 
-  else if(leftDistance < 8) { steering_servo.write(rightAngle);  delay(10);  }
+  if(rightDistance < 8) { steering_servo.write(leftAngle);  delay(20);
+    } // To avoid extreme collissions. 
+  else if(leftDistance < 8) { steering_servo.write(rightAngle);  delay(20);
+    }
   else
   {
-    writeAngleToServo();
+    if(obstacleError!=0)
+    {
+      writeAngleToServo();
+    }
+
   }
   }
 }
@@ -258,13 +266,18 @@ void handleSerialCommand(String command) {
         setPointMultiplier = -1;
         changeSetPoint();  //Fix the sign of the setpoint
         break;
-      case 'R':  //Red obstacle's distance
-        obstacleError = 0; //Disabling the pid correction 
-        angle = midAngle + maxSteer*float((35 - constant_value)/constant_value);
-        if(angle >= leftAngle && angle <= rightAngle)
-        {
-          steering_servo.write(angle); 
-        }
+      case 'Z':  //Red obstacle's distance
+  
+        //obstacleError = 0; //Disabling the pid correction 
+        // angle = midAngle + maxSteer*((45 - constant_value)/45);
+        //     if(angle >= leftAngle && angle <= rightAngle)
+        // {
+        //   steering_servo.write(angle); 
+        // }
+        // Serial.print("Angle = ");
+        // Serial.println(angle); 
+       // digitalWrite(buzzerPin, HIGH); 
+      
         // redObstacleDistance = int(constant_value);  // obstacle distance will be 0 when it is beyond the vision range of the vehicle
         // changeSetPoint();
         break;
@@ -274,6 +287,16 @@ void handleSerialCommand(String command) {
         break;
       case 'E':
         obstacleError = int(constant_value);
+        if(obstacleError!=0)
+        {
+          setPoint = 67; 
+          
+        }
+       else  {
+
+        setPoint = 0; 
+          
+        }
         break; 
 
 
