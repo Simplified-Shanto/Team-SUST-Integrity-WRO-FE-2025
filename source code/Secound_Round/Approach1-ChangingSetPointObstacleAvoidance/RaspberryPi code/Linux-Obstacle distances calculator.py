@@ -8,14 +8,15 @@
 DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
-
-CAM_TYPE = 1 # 0  = Raspicamera, 1  = webcam. 
-FOCAL_LENGTH_PX = 535 #Focal length in pixels - 530 for micropack webcam
-SERIAL_READY = 0 #Whether a serial device is connected or not
-CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam
+ 
 MACHINE = 0  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
-COM_PORT = 4
+SERIAL_READY = 1 #Whether a serial device is connected or not
+CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam.
+FOCAL_LENGTH_PX = 535 #Focal length in pixels - 530 for micropack webcam
 TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
+
+CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam
+COM_PORT = 4
 TUNE_VEHICLE_PARAMETERS = 0
 SHOW_LINE_ANALYSIS = 0
 
@@ -82,8 +83,8 @@ def estimate_distance(perceived_dimension_px): # Input the height of the boundin
     Uses KNOWN_WIDTH_CM and FOCAL_LENGTH_PX from global config."""
     if perceived_dimension_px == 0:
         return 0.0
-    #return round((KNOWN_HEIGHT_CM * FOCAL_LENGTH_PX) / perceived_dimension_px, 2)
-    return round((KNOWN_DISTANCE_CM * perceived_dimension_px) / KNOWN_HEIGHT_CM) # Uncomment this one to find the focal length of the camera by placing the object at the known distance
+    return round((KNOWN_HEIGHT_CM * FOCAL_LENGTH_PX) / perceived_dimension_px, 2)
+    #return round((KNOWN_DISTANCE_CM * perceived_dimension_px) / KNOWN_HEIGHT_CM) # Uncomment this one to find the focal length of the camera by placing the object at the known distance
     
     
    # Define bounds for the general trackbar mask (works fine in bright light (day) condition with webcam ) 
@@ -200,7 +201,7 @@ if MACHINE == 0:  # Windows
 elif MACHINE==1:             # Linux / Raspberry Pi
     if CAM_TYPE==0: # Pi camera 
         picam2 = Picamera2()
-        config = picam2.create_preview_configuration(main={"size": (640, 480)})
+        config = picam2.create_preview_configuration(main={"size": (FRAME_WIDTH,FRAME_HEIGHT)})
         picam2.configure(config)
         picam2.start()
     elif CAM_TYPE==1:  # USB webcam. 
@@ -416,22 +417,22 @@ while True:
         obstacleArea = 0
         for contour_id, contour in enumerate(contours_green):
             area = cv2.contourArea(contour)
-            x,y,w,h = cv2.boundingRect(contour) #Assuming that the camera's lense surface is parallel to one of the side of the wro obstacle
-            if area > MIN_OBJECT_AREA and  w!=0: #If the distance reading has been reported once, we won't send it over and over again 
-                cv2.rectangle(green_masked_frame, (x, y), (x + w, y + h), (255, 255,0), 2)
+            if area > MIN_OBJECT_AREA: #If the distance reading has been reported once, we won't send it over and over again 
+                x,y,w,h = cv2.boundingRect(contour) #Assuming that the camera's lense surface is parallel to one of the side of the wro obstacle
+                distance = math.floor(estimate_distance(h))
+                if DEVELOPING:
+                    cv2.rectangle(green_masked_frame, (x, y), (x + w, y + h), (255, 255,0), 2)
+                    cv2.putText(green_masked_frame, str(distance), (int(x+(w/2) - 10), int(y - 20)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 ); 
                 obstaclePresent = 1
-                obstacleArea = math.floor(area)
                 break
 
         if obstaclePresent :
                 if serialFlag2==1:
-                    #distance = math.floor(estimate_distance(w))
                     if SERIAL_READY==1: 
-                        ser.write(f"G:{area};".encode('utf-8'))
+                        ser.write(f"G:{distance};".encode('utf-8'))
                     if DEVELOPING:
-                        print(f"Serial: G:{area};")
+                        print(f"Serial: G:{distance};")
                     serialFlag2 = 0  #The object is present in front of the vehicle, now we can send a 0 distance while it goes beyond the vision range. 
-                    #serialFlag2=1  # Marking that we have sent the distance once, and won't sent this over and over again
         elif serialFlag2 ==0: # Camera is not encountering any blue object and we haven't reported it to the LLM 
                         if SERIAL_READY==1: 
                             ser.write("G:0;".encode('utf-8')) #Tells the LLM(low level microcontroller) that we are not seeing any blue object right now
@@ -446,31 +447,29 @@ while True:
         red_masked_frame = cv2.bitwise_and(frame, frame, mask = red_mask_combined)
         if TUNE_HSV==1:
             cv2.putText(red_masked_frame, "Red object", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2); 
-        
         contours_red, _ = cv2.findContours(
             red_mask_combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
         obstaclePresent = 0
         obstacleArea = 0
 
         for contour_id, contour in enumerate(contours_red):
             area = cv2.contourArea(contour)
-            x,y,w,h = cv2.boundingRect(contour) #Assuming that the camera's lense surface is parallel to one of the side of the wro obstacle
-            if area > MIN_OBJECT_AREA and  w!=0: #If the distance reading has been reported once, we won't send it over and over again 
-                cv2.rectangle(red_masked_frame, (x, y), (x + w, y + h), (255, 255,0), 2)
+            if area > MIN_OBJECT_AREA: #If the distance reading has been reported once, we won't send it over and over again 
+                x,y,w,h = cv2.boundingRect(contour) #Assuming that the camera's lense surface is parallel to one of the side of the wro obstacle
+                distance = math.floor(estimate_distance(h))
+                if DEVELOPING:
+                    cv2.rectangle(red_masked_frame, (x, y), (x + w, y + h), (255, 255,0), 2)
+                    cv2.putText(red_masked_frame, str(distance), (int(x+(w/2) - 10), int(y - 20)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2 ); 
                 obstaclePresent = 1
-                obstacleArea = math.floor(area)
                 break
 
         if obstaclePresent :
                 if serialFlag==1:
-                    #distance = math.floor(estimate_distance(w))
                     if SERIAL_READY==1: 
                         ser.write(f"R:{area};".encode('utf-8'))
                     if DEVELOPING:
                         print(f"Serial: R:{area};")
                     serialFlag = 0  #The object is present in front of the vehicle, now we can send a 0 distance while it goes beyond the vision range. 
-                    #serialFlag2=1  # Marking that we have sent the distance once, and won't sent this over and over again
         elif serialFlag ==0: # Camera is not encountering any blue object and we haven't reported it to the LLM 
                         if SERIAL_READY==1: 
                             ser.write("R:0;".encode('utf-8')) #Tells the LLM(low level microcontroller) that we are not seeing any blue object right now
