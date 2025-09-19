@@ -5,14 +5,14 @@
 #!/usr/bin/env python3
 
 # --- Configuration ---
-MACHINE = 0  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
+MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
  
 SERIAL_READY = 1 #Whether a serial device is connected or not
-CAM_TYPE = 1 # 0  = Raspicamera, 1  = webcam.
-FOCAL_LENGTH_PX = 530 #Focal length in pixels - 530 for micropack webcam 335 - raspi cam
+CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam.
+FOCAL_LENGTH_PX = 335 #Focal length in pixels - 530 for micropack webcam 335 - raspi cam
 BRIGHT_LIGHT = 1 # Bright_light = 1 indicates that we are testing things in bright daylight, bright_light = 0 means that we are testing this thing in night under led lights
 TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
 
