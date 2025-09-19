@@ -18,7 +18,8 @@ double Ki = 0;
 int lineInterval = 1000;  //time (ms) to wait in the image processing programme between lines counted.
 int stopDelay = 1000;     //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
 double value = 0;         // Stores the difference between the left and right readings.
-double error = 0;         // The difference between value and setpoint.
+double sonarError = 0;         // The difference between value and setpoint.
+float obstacleError = 0; 
 double lastError = 0;
 double PIDangle = 0;
 double integralError = 0;
@@ -35,8 +36,8 @@ double dynamicSetPoint = 0;  //This setpoint is assigned after determining the r
 int setPointMultiplier = 1;  // -1 = round is clockwise 1 = round is anticlockwise
 int terminalDistanceThreshold = 200;
 short restrictedSteer = 35;
-short unrestrictedSteer = 40;
-int steerAngle = restrictedSteer;  // steerAngle = maximum angle used for steering currently
+short unrestrictedSteer = 45;
+int steerAngle = unrestrictedSteer;  // steerAngle = maximum angle used for steering currently
 
 
 
@@ -169,12 +170,12 @@ void loop() {
   if (integralError < -1000) integralError = -1000;
   //   67         84,             7   -> When the vehicle follows the right wall
   //  -67         7 ,            84   -> When the vehicle follows the left wall
-  //value = leftDistance - rightDistance;
-  //error = value - setPoint;
+  value = leftDistance - rightDistance;
+  sonarError = value - setPoint;
 
-  PIDangle = error * Kp
+  PIDangle = sonarError * Kp
              + (error - lastError) * Kd
-             + (integralError * Ki);
+             + (obstacleError * Ki);
   lastError = error;
   if (editParameter == 1) { configureParameters(); }
 
@@ -251,7 +252,7 @@ void handleSerialCommand(String command) {
         changeSetPoint();  //Fix the sign of the setpoint
         break;
       case 'R':  //Red obstacle's distance
-        error = int(constant_value);
+        obstacleError = int(constant_value);
         // redObstacleDistance = int(constant_value);  // obstacle distance will be 0 when it is beyond the vision range of the vehicle
         // changeSetPoint();
         break;
