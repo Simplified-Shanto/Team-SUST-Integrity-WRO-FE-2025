@@ -9,16 +9,16 @@ DEVELOPING   = 1 # The code is in development mode, and we'll show processed ima
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
  
-MACHINE = 0  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
+MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 SERIAL_READY = 1 #Whether a serial device is connected or not
 CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam.
-FOCAL_LENGTH_PX = 535 #Focal length in pixels - 530 for micropack webcam
+FOCAL_LENGTH_PX = 335 #Focal length in pixels - 530 for micropack webcam 335 - raspi cam
 TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
 
 CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam
 COM_PORT = 4
 TUNE_VEHICLE_PARAMETERS = 0
-SHOW_LINE_ANALYSIS = 0
+SHOW_LINE_ANALYSIS = 1
 
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
@@ -88,36 +88,36 @@ def estimate_distance(perceived_dimension_px): # Input the height of the boundin
     
     
    # Define bounds for the general trackbar mask (works fine in bright light (day) condition with webcam ) 
-lower_bound_green = np.array([15, 60, 0])
-upper_bound_green = np.array([46, 255, 255])
-
-lower_bound1_red = np.array([170, 70, 0])
-upper_bound1_red = np.array([179, 255, 255])
-
-lower_bound2_red = np.array([0, 70, 00])
-upper_bound2_red = np.array([5, 255, 255])
-
-blue_line_lower_bound = np.array([101, 120 , 00 ])
-blue_line_upper_bound = np.array([167, 255, 255 ])
-
-orange_line_lower_bound = np.array([6, 60, 0 ])
-orange_line_upper_bound = np.array([20, 255, 255 ])
-
-    # # Define bounds for the general trackbar mask (works fine in bright light condition with raspi cam ) 
-# lower_bound_green = np.array([15, 10, 0])
+# lower_bound_green = np.array([15, 60, 0])
 # upper_bound_green = np.array([46, 255, 255])
-# 1
-# lower_bound1_red = np.array([165, 190, 0])
+
+# lower_bound1_red = np.array([170, 70, 0])
 # upper_bound1_red = np.array([179, 255, 255])
 
-# lower_bound2_red = np.array([165, 190, 00])
-# upper_bound2_red = np.array([179, 255, 255])
+# lower_bound2_red = np.array([0, 70, 00])
+# upper_bound2_red = np.array([5, 255, 255])
 
-# blue_line_lower_bound = np.array([111, 93 , 00 ])
-# blue_line_upper_bound = np.array([150, 255, 255 ])
+# blue_line_lower_bound = np.array([101, 120 , 00 ])
+# blue_line_upper_bound = np.array([167, 255, 255 ])
 
-# orange_line_lower_bound = np.array([174, 102, 14 ])
-# orange_line_upper_bound = np.array([179, 170, 255 ])
+# orange_line_lower_bound = np.array([6, 60, 0 ])
+# orange_line_upper_bound = np.array([20, 255, 255 ])
+
+    # Define bounds for the general trackbar mask (works fine in bright light condition with raspi cam ) 
+lower_bound_green = np.array([15, 10, 0])
+upper_bound_green = np.array([46, 255, 255])
+1
+lower_bound1_red = np.array([165, 190, 0])
+upper_bound1_red = np.array([179, 255, 255])
+
+lower_bound2_red = np.array([165, 190, 00])
+upper_bound2_red = np.array([179, 255, 255])
+
+blue_line_lower_bound = np.array([111, 93 , 00 ])
+blue_line_upper_bound = np.array([150, 255, 255 ])
+
+orange_line_lower_bound = np.array([174, 102, 14 ])
+orange_line_upper_bound = np.array([179, 170, 255 ])
 
 
 
