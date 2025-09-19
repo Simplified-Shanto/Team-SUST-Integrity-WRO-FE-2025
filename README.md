@@ -669,3 +669,17 @@ Why this matters
 ---
 
 By combining a **25GA high-RPM motor**, **LEGO differential**, and a **custom rack and pinion system**, our robot delivers realistic movement, efficient turning, and powerful drive — ready for the WRO Future Engineers challenge.
+
+
+---
+---
+
+# 🧑‍💻 Strategy for the Obstacle Challenge Round
+
+Our current strategy for the Obstacle Challenge round is to avoid obstacles by changing the setpoint in the PID loop of our robot's main program.
+
+- After the program starts the robot would at first determine the round direction(clockwise or anticlockwise) by observing which line(either orange or blue) comes first
+- Then when it encounters a red object, it changes its setpoint from being into the middle towards the right wall(10 cm away from the right wall). The same approach is followed in case of a green object, only the difference being that it now follows the left wall.
+- If it does not encounter any object the setpoint is again set to the center.
+
+
