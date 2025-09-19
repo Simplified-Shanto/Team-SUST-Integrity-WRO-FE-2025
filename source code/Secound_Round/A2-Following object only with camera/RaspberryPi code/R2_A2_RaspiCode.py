@@ -25,8 +25,9 @@ FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
 FRAME_CENTER_X = FRAME_WIDTH/2
 
-MIN_OBJECT_AREA = 1200  # Minimum contour area to consider an object (adjust as needed)
+MIN_OBJECT_AREA = 500  # Minimum contour area to consider an object (adjust as needed)
 MIN_LINE_AREA = 1000
+frontDistance = 35
 
 if MACHINE == 1 and CAM_TYPE==0: 
     from picamera2 import Picamera2
@@ -234,12 +235,13 @@ blue_line_timer = time.time() * 1000 # Getting the total execution time in milli
 orange_line_timer = blue_line_timer
 orange_line_count = -1
 
-setPoint = 0 # We want the object to be in the center of the frame. 
+setPoint = 120 # We want the object to be in the center of the frame. 
 carStopped = 0 # This scripts assumes that, the car is in motion in the beginning of this script. 
 
 
 # --- Video Processing Loop ---
 while True:
+    
     if SERIAL_READY ==1 and ser.in_waiting > 0:  # If there's some message from Arduino
         command = ser.readline().decode('utf-8').strip()  # Read line & strip newline/spaces
         if DEVELOPING == 1:
@@ -474,7 +476,7 @@ while True:
                 obstaclePresent = 1
                 break
 
-        if obstaclePresent and distance > 25:
+        if obstaclePresent and distance > frontDistance:
                # if serialFlag==1:
                     if SERIAL_READY==1: 
                         if carStopped==1: 
@@ -486,7 +488,7 @@ while True:
                     if DEVELOPING:
                         print(f"Serial: R:{error};")
  
-        elif distance < 25 and carStopped==0: 
+        elif distance < frontDistance and carStopped==0: 
             if SERIAL_READY==1: 
                 ser.write(f"x".encode("utf-8"))
             if DEVELOPING: 
