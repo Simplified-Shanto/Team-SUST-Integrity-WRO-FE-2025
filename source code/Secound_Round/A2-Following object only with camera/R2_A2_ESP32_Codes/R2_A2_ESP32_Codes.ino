@@ -16,7 +16,7 @@ double Kp = 3;    //5
 double Kd = 0.3;  //1
 double Ki = 0;
 int lineInterval = 1000;  //time (ms) to wait in the image processing programme between lines counted.
-int stopDelay = 1000;     //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
+float stopDelay = 0;     //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
 double value = 0;         // Stores the difference between the left and right readings.
 double error = 0;         // The difference between value and setpoint.
 double lastError = 0;
@@ -24,9 +24,15 @@ double PIDangle = 0;
 double integralError = 0;
 
 #define parameterCount 9  // Number of configurable parameters
+#define frameCenterX  320 
 
-unsigned int redObstacleDistance = 0;
-unsigned int greenObstacleDistance = 0;
+int redObstacleDistance = 0;
+int greenObstacleDistance = 0;
+int greenObstacleX = 0; 
+int redObstacleX = 0; 
+int redSetPoint = -120; // It'll try to keep the obstacle 120 pixel right from the center of the frame. 
+int greenSetPoint = 120; // It'll try to keep the obstacle 120 pixel left from the center of the frame. 
+float kd = 0; // We'll utilise stopDelay for obstacle avoidance kd, kd = float(stopDelay)/1000.0; 
 
 
 double setPoint = 0;  // The amount of difference in reading of the two ultrasonic sensor we want.
@@ -45,7 +51,7 @@ void setup() {
   preferences.begin("wrobot", false);
  // preferences.clear();  //Only uncomment it when you have the first round code uploaded currently. Upload this code. Then comment this line again.
   lineInterval = preferences.getInt("lineInterval", lineInterval);
-  stopDelay = preferences.getInt("stopDelay", stopDelay);
+  stopDelay = preferences.getFloat("stopDelay", stopDelay);
   Kp = preferences.getDouble("Kp", Kp);
   Ki = preferences.getDouble("Ki", Ki);
   Kd = preferences.getDouble("Kd", Kd);
@@ -88,42 +94,54 @@ short frontDistance = 0;
 int roundDirection = 0;  // 0 = clockwise 1 = ccw
 
 
+#define obstacleDistanceThreshold  50  // We'll take turning obstacle handling approach when the obstacle is within 50 cm towards the vehicle. 
+
 void loop() {
   if (Serial.available()) {
     String command = Serial.readStringUntil(';');
     handleSerialCommand(command);
   }
+    handleButtonPress();
+    if (editParameter == 1) { configureParameters(); }
+
   rightDistance = rightSonar.ping_cm();
   leftDistance = leftSonar.ping_cm();
   frontDistance = frontSonar.ping_cm();
-  /*
 
 
-    There's a problem with the following conditioning, if anyhow side sonar fails to be zero when its time to turn, the vehicle will always take left turn. 
-      
-      If we know the round direction, we can disable taking turn in left or right side at corners, reducing the error possibility. 
-      
-      Can we anyhow use the gyro sensor to determine the round direction very reliably?  The car goes parallely for the time being at the starting. 
+  if((redObstacleDistance != 0 && redObstacleDistance < obstacleDistanceThreshold )|| (greenObstacleDistance!=0 && greenObstacleDistance < obstacleDistanceThreshold ))
+  {
+    if(redObstacleDistance < greenObstacleDistance)
+    {
+         value = frameCenterX - redObstacleX; 
+         error = value - redSetPoint; 
+    }
+    else if(greenObstacleDistance < redObstacleDistance)
+    {
+         value = frameCenterX - greenObstacleX; 
+         error = value - greenSetPoint; 
+    }
+ 
+      PIDangle = error * Ki 
+                 + (error - lastError) * (stopDelay); 
+      lastError = error; 
 
-      Can we anyhow avoid obstacle from the right side, or change setPoint properly without knowing the round direction ? Using any opencv mechanism. 
+      // Serial.print("Kd = "); 
+      // Serial.print(stopDelay/1000.0);
+      // Serial.print(" PIDangle = "); 
+      // Serial.print(PIDangle); 
+      // Serial.print(" redX = "); 
+      // Serial.print(redObstacleX); 
+      // Serial.print(" greenX = "); 
+      // Serial.println(greenObstacleX); 
+  }
 
-      For now, since we've the camera facing downward, and detecting lines, we can solfe the counter-clockwise turning problem. 
-
-      The counter-clockwise turning problem is arising from the fact that, the frontDistance condition checking is being true before the side sonar being zero condition is hitting the ground. 
-      We can also try to solve the problem first by reducing the front distance threshold. So we'll be primarily relying on the side sonars for turning and then in any case if it fails, 
-      then the front distance checking will start the turning attempt. With this combine the one side turning only mechanism at corners, and things should work properly. 
-
-  */
-
-
-  //Mechanism 2:
-
-  if (setPoint != 0 || rightDistance == 0 || leftDistance == 0 || (frontDistance != 0 && frontDistance < frontDistanceThreshold))  //Take a turning action on any of these events.
+  else
+  {
+    if ( rightDistance == 0 || leftDistance == 0 || (frontDistance != 0 && frontDistance < frontDistanceThreshold))  //Take a turning action on any of these events.
   {
     steerAngle = unrestrictedSteer;
-    if (setPoint != 0) {
-       // We need to devise some logic here, to avoid wall hits, overturning etc things when the steering is still being done by the changed setpoint. 
-    } else if (rightDistance == 0 && leftDistance != 0)  // 1 0
+    if (rightDistance == 0 && leftDistance != 0)  // 1 0
     {
       rightDistance = terminalDistanceThreshold;
       digitalWrite(buzzerPin, LOW);
@@ -155,9 +173,6 @@ void loop() {
   } else {
     steerAngle = restrictedSteer;
   }
-
-
-  handleButtonPress();
   integralError += error;
   // optional: limit integral to prevent windup
   if (integralError > 1000) integralError = 1000;
@@ -166,13 +181,13 @@ void loop() {
   //  -67         7 ,            84   -> When the vehicle follows the left wall
   value = leftDistance - rightDistance;
   error = value - setPoint;
-
   PIDangle = error * Kp
              + (error - lastError) * Kd
              + (integralError * Ki);
   lastError = error;
-  if (editParameter == 1) { configureParameters(); }
+  }
 
+  //Mechanism 2:
   if (gameStarted == 1) {
     writeAngleToServo(); 
   }
@@ -247,13 +262,20 @@ void handleSerialCommand(String command) {
         break;
       case 'R':                                     //Red obstacle's distance
         redObstacleDistance = int(constant_value);  // obstacle distance will be 0 when it is beyond the vision range of the vehicle
-        changeSetPoint();
+        //changeSetPoint();
         break;
       case 'G':                                       //Green obstacle's distance
         greenObstacleDistance = int(constant_value);  // obstacle distance will be 0 when it is beyond the vision range of the vehicle
-        changeSetPoint();
+        //changeSetPoint();
         break;
-
+      case 'g': //Green obstacle X value in the frame
+        greenObstacleX = int(constant_value); 
+        Serial.println("Received gX"); 
+        break; 
+      case  'w': //Red obstacle X value in the frame 
+        redObstacleX = int(constant_value); 
+        Serial.println("Received rX"); 
+        break; 
       case 'p':  //Proportional of PID
         Kp = constant_value;
         preferences.putDouble("Kp", Kp);
@@ -382,7 +404,7 @@ void handleButtonPress() {
             Kp -= 0.5;
             break;
           case 3:
-            Ki -= 0.05;
+            Ki -= 0.5;
             break;
           case 4:
             Kd -= 0.05;
@@ -391,7 +413,7 @@ void handleButtonPress() {
             lineInterval -= 50;
             break;
           case 6:
-            stopDelay -= (stopDelay >= 50) ? 50 : 0;
+            stopDelay -= 0.1; 
             break;
           case 7:
             restrictedSteer -= (restrictedSteer > 0) ? 1 : 0;
@@ -440,7 +462,7 @@ void handleButtonPress() {
             Kp += 0.5;
             break;
           case 3:
-            Ki += 0.05;
+            Ki += 0.5;
             break;
           case 4:
             Kd += 0.05;
@@ -449,7 +471,7 @@ void handleButtonPress() {
             lineInterval += 50;
             break;
           case 6:
-            stopDelay += 50;
+            stopDelay += 0.1;
             break;
           case 7:
             restrictedSteer += (restrictedSteer < maxSteer) ? 1 : 0;
@@ -490,9 +512,10 @@ void saveParameters() {
   preferences.putDouble("Kd", Kd);
   preferences.putInt("speed", forwardSpeed);
   preferences.putInt("lineInterval", lineInterval);
-  preferences.putInt("stopDelay", stopDelay);
+  preferences.putFloat("stopDelay", stopDelay);
   preferences.putShort("urSteer", unrestrictedSteer);
   preferences.putShort("restrictedSteer", restrictedSteer);
+
 }
 
 void writeAngleToServo() {

@@ -437,8 +437,10 @@ while True:
         if obstaclePresent:
                if SERIAL_READY==1: 
                     ser.write(f"G:{distance};".encode('utf-8'))
+                    ser.write(f"g:{object_center_x};".encode('utf-8'))
                if DEVELOPING:
                     print(f"Serial: G:{distance};")
+                    print(f"Serial: g:{object_center_x};")
 
         else:
             if SERIAL_READY==1:  ser.write("G:0;".encode('utf-8'))
@@ -476,8 +478,10 @@ while True:
         if obstaclePresent:
                if SERIAL_READY==1: 
                     ser.write(f"R:{distance};".encode('utf-8'))
+                    ser.write(f"w:{object_center_x};".encode('utf-8'))
                if DEVELOPING:
                     print(f"Serial: R:{distance};")
+                    print(f"Serial: w:{object_center_x};")
 
         else: 
             if SERIAL_READY==1:  ser.write("R:0;".encode('utf-8'))
