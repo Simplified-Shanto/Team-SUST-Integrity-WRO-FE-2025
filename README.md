@@ -111,6 +111,21 @@ To keep everything organized and transparent, we structured this GitHub repo wit
 >* **Official Link:** Access the rulebook here: [🔗 WRO Future Engineers 2025 Rulebook]([https://wro-association.org/competitions/future-engineers/](https://wro-association.org/wp-content/uploads/WRO-2024-Future-Engineers-Self-Driving-Cars-General-Rules.pdf).
 
 ---
+
+# Strategy for the Challenge Rounds
+
+## 👩‍💻 Strategy for the Open Challenge Round
+
+In this round we mainly used sonar sensors to determine the position of the robot during driving straight and turning. We used a webcam for lap counting and also as a failsafe method for determining the position
+of the robot when the data sent by the sonar sensors is inconsistent or in case of any malfunction.
+
+- After starting the program the robot determines its placement on the track and its round direction(clockwise or anticlockwise).
+- The sonar sensors attached to both sides of the robot help the robot to keep its position always at the center and the one attached in front of the robot helps it to turn smoothly by giving it ample data.
+It is set to always turn right when round direction is clockwise and left when anticlockwise.
+- The webcam mainly helps count the orange lines on the track to keep record of laps. After robot counts 12 orange lines(4 orange line = 1 lap) it determines the end of 3 laps.
+- After traversing 3 laps it stops at its initial position after a certain amount of delay.
+
+
 ## 🏁 Round 1: Lap Completion (Open Round)
 
 Here’s the process flow of how the robot completes laps in Round 1:
@@ -118,6 +133,16 @@ Here’s the process flow of how the robot completes laps in Round 1:
 ![Open Round Process](schematic/open%20round%20pc.svg)
 
 ---
+
+
+## 🧑‍💻 Strategy for the Obstacle Challenge Round
+
+Our current strategy for the Obstacle Challenge round is to avoid obstacles by changing the setpoint in the PID loop of our robot's main program.
+
+- After the program starts the robot would at first determine the round direction(clockwise or anticlockwise) by observing which line(either orange or blue) comes first
+- Then when it encounters a red object, it changes its setpoint from being into the middle towards the right wall(10 cm away from the right wall). The same approach is followed in case of a green object, only the difference being that it now follows the left wall.
+- If it does not encounter any object the setpoint is again set to the center.
+
 
 ## 🚧 Round 2: Obstacle Challenge Round
 
@@ -708,35 +733,6 @@ Why this matters
 ---
 
 By combining a **25GA high-RPM motor**, **LEGO differential**, and a **custom rack and pinion system**, our robot delivers realistic movement, efficient turning, and powerful drive — ready for the WRO Future Engineers challenge.
-
-
----
----
-
-
-# Strategy for the Challenge Rounds
-
-## 👩‍💻 Strategy for the Open Challenge Round
-
-In this round we mainly used sonar sensors to determine the position of the robot during driving straight and turning. We used a webcam for lap counting and also as a failsafe method for determining the position
-of the robot when the data sent by the sonar sensors is inconsistent or in case of any malfunction.
-
-- After starting the program the robot determines its placement on the track and its round direction(clockwise or anticlockwise).
-- The sonar sensors attached to both sides of the robot help the robot to keep its position always at the center and the one attached in front of the robot helps it to turn smoothly by giving it ample data.
-It is set to always turn right when round direction is clockwise and left when anticlockwise.
-- The webcam mainly helps count the orange lines on the track to keep record of laps. After robot counts 12 orange lines(4 orange line = 1 lap) it determines the end of 3 laps.
-- After traversing 3 laps it stops at its initial position after a certain amount of delay.
-
----
-
-
-## 🧑‍💻 Strategy for the Obstacle Challenge Round
-
-Our current strategy for the Obstacle Challenge round is to avoid obstacles by changing the setpoint in the PID loop of our robot's main program.
-
-- After the program starts the robot would at first determine the round direction(clockwise or anticlockwise) by observing which line(either orange or blue) comes first
-- Then when it encounters a red object, it changes its setpoint from being into the middle towards the right wall(10 cm away from the right wall). The same approach is followed in case of a green object, only the difference being that it now follows the left wall.
-- If it does not encounter any object the setpoint is again set to the center.
 
 ---
 
