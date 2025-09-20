@@ -713,7 +713,24 @@ By combining a **25GA high-RPM motor**, **LEGO differential**, and a **custom ra
 ---
 ---
 
-# 🧑‍💻 Strategy for the Obstacle Challenge Round
+
+# Strategy for the Challenge Rounds
+
+## 👩‍💻 Strategy for the Open Challenge Round
+
+In this round we mainly used sonar sensors to determine the position of the robot during driving straight and turning. We used a webcam for lap counting and also as a failsafe method for determining the position
+of the robot when the data sent by the sonar sensors is inconsistent or in case of any malfunction.
+
+- After starting the program the robot determines its placement on the track and its round direction(clockwise or anticlockwise).
+- The sonar sensors attached to both sides of the robot help the robot to keep its position always at the center and the one attached in front of the robot helps it to turn smoothly by giving it ample data.
+It is set to always turn right when round direction is clockwise and left when anticlockwise.
+- The webcam mainly helps count the orange lines on the track to keep record of laps. After robot counts 12 orange lines(4 orange line = 1 lap) it determines the end of 3 laps.
+- After traversing 3 laps it stops at its initial position after a certain amount of delay.
+
+---
+
+
+## 🧑‍💻 Strategy for the Obstacle Challenge Round
 
 Our current strategy for the Obstacle Challenge round is to avoid obstacles by changing the setpoint in the PID loop of our robot's main program.
 
