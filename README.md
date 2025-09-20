@@ -10,6 +10,30 @@
 **Team Origin**: Bangladesh
 
 ---
+# 📑 Table of Contents  
+
+- [👥 About the Team – Team Integral Constant](#-about-the-team--team-integral-constant)  
+  - [🌟 Why the name *Integral Constant*?](#-why-the-name-integral-constant)  
+  - [🧠 Who We Are](#-who-we-are)  
+  - [📁 Repository Structure](#-our-repository-structure)  
+- [🎯 Mission Overview](#mission-overview-for-wro-future-engineers-rounds)  
+  - [🏁 Round 1: Lap Completion (Open Round)](#-round-1-lap-completion-open-round)  
+  - [🚧 Round 2: Obstacle Challenge Round](#-round-2-obstacle-challenge-round)  
+- [🧩 Hardware Components](#-hardware-components)  
+- [🚗 Mobility Management](#-mobility-management)  
+  - [🦾 Rear Axle Power Distribution](#-rear-axle-power-distribution)  
+  - [🔁 Differential System](#-differential-system)  
+  - [🧭 Steering Mechanism](#-steering-mechanism)  
+- [💻 Raspberry Pi Setup](#-setting-up-raspberry-pi-for-image-processing-with-opencv--python)  
+  - [🔑 Enabling & Using VNC](#-enabling--using-vnc-on-raspberry-pi)  
+  - [🔎 Static COM Port Setup](#-how-to-set-static-com-port-for-the-low-level-microcontroller)  
+  - [📷 Test Webcam Feed](#test-your-webcam-feed)  
+  - [⚡ Auto-start Python Script](#running-your-python-script-on-startup-of-raspberry-pi)  
+  - [🔌 Safe Shutdown via Serial](#safe-shutdown-for-raspberry-pi-via-serial-command)  
+- [🧪 Testing & Calibration](#-testing--calibration)  
+- [🔐 Safety Considerations](#-safety-considerations)  
+- [🧑‍💻 Obstacle Challenge Strategy](#-strategy-for-the-obstacle-challenge-round)  
+
 ---
 
 ### 🌟 Why the name *Integral Constant*?
