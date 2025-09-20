@@ -87,7 +87,21 @@ To keep everything organized and transparent, we structured this GitHub repo wit
 >* **Official Link:** Access the rulebook here: [🔗 WRO Future Engineers 2025 Rulebook]([https://wro-association.org/competitions/future-engineers/](https://wro-association.org/wp-content/uploads/WRO-2024-Future-Engineers-Self-Driving-Cars-General-Rules.pdf).
 
 ---
+## 🏁 Round 1: Lap Completion (Open Round)
 
+Here’s the process flow of how the robot completes laps in Round 1:
+
+![Open Round Process]()
+
+---
+
+## 🚧 Round 2: Obstacle Challenge Round
+
+Here’s the process flow of how the robot avoids obstacles in Round 2:
+
+![Obstacle Round Process]([obstacle%20round%20pc.svg](https://github.com/Simplified-Shanto/Team-SUST-Integrity-WRO-FE-2025/blob/main/schematic/obstacle%20round%20pc.svg))
+
+---
 
 We built this robot and documentation not just for a competition, but to share, inspire, and collaborate. If you’re here to learn, contribute, or replicate — welcome to the constant.
 
