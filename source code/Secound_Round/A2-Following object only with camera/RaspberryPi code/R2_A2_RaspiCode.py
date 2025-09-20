@@ -446,7 +446,7 @@ while True:
             if SERIAL_READY==1:  ser.write("G:0;".encode('utf-8'))
             if DEVELOPING==1:   print("Serial: G:0;")
         
-
+    
         # 1. Detect Red objects
         red_mask1 = cv2.inRange(hsv, lower_bound1_red, upper_bound1_red)
         red_mask2 = cv2.inRange(hsv, lower_bound2_red, upper_bound2_red)
