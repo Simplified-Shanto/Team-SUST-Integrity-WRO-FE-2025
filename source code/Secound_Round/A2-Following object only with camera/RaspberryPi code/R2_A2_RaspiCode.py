@@ -5,14 +5,14 @@
 #!/usr/bin/env python3
 
 # --- Configuration ---
-MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
+MACHINE = 0  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
  
-SERIAL_READY = 1 #Whether a serial device is connected or not
-CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam.
-FOCAL_LENGTH_PX = 335 #Focal length in pixels - 530 for micropack webcam 335 - raspi cam
+SERIAL_READY = 0 #Whether a serial device is connected or not
+CAM_TYPE = 1 # 0  = Raspicamera, 1  = webcam.
+FOCAL_LENGTH_PX = 530 #Focal length in pixels - 530 for micropack webcam 335 - raspi cam
 BRIGHT_LIGHT = 0 # Bright_light = 1 indicates that we are testing things in bright daylight, bright_light = 0 means that we are testing this thing in night under led lights
 TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
 
@@ -113,7 +113,7 @@ elif CAM_TYPE==0:
     if BRIGHT_LIGHT==1:    # Define bounds for the general trackbar mask (works fine in bright light condition with raspi cam ) 
         lower_bound_green = np.array([15, 10, 0])
         upper_bound_green = np.array([46, 255, 255])
-        1
+    
         lower_bound1_red = np.array([165, 190, 0])
         upper_bound1_red = np.array([179, 255, 255])
 
@@ -242,7 +242,6 @@ carStopped = 0 # This scripts assumes that, the car is in motion in the beginnin
 
 # --- Video Processing Loop ---
 while True:
-    
     if SERIAL_READY ==1 and ser.in_waiting > 0:  # If there's some message from Arduino
         command = ser.readline().decode('utf-8').strip()  # Read line & strip newline/spaces
         if DEVELOPING == 1:
@@ -288,7 +287,6 @@ while True:
                 if DEVELOPING:
                     print("Line Interval = ", lineInterval)
 
-
     if DEVELOPING == 1 or blue_line_count!=-1: # do all the image processing, either if we are developing the code, or we are running a lap. 
         if CAM_TYPE==1:
             success, frame = cap.read()
@@ -313,37 +311,34 @@ while True:
             #Checking for blue line
         current_time = time.time()*1000
     
-        # if blue_line_count!=-1:  # We'll only do the following processes when blue_line_count is set to zero by pressing the game start button in the vehicle and receiving serial command 'r' from the LLMC. The reason is avoiding early count of the lines by environmental noise before the round has started. 
-        #     for contour_index, contour in enumerate(blue_line_contours): 
-        #         area = cv2.contourArea(contour)
-        #         #print("blue = ", area)
-        #         if area > MIN_LINE_AREA:
-        #             if(current_time - blue_line_timer > lineInterval):
-        #                 blue_line_count +=1
-        #                 blue_line_timer = current_time
+        if blue_line_count!=-1:  # We'll only do the following processes when blue_line_count is set to zero by pressing the game start button in the vehicle and receiving serial command 'r' from the LLMC. The reason is avoiding early count of the lines by environmental noise before the round has started. 
+            for contour_index, contour in enumerate(blue_line_contours): 
+                area = cv2.contourArea(contour)
+                if area > MIN_LINE_AREA:
+                    if(current_time - blue_line_timer > lineInterval):
+                        blue_line_count +=1
+                        blue_line_timer = current_time
 
-        #             if directionSentFlag == 0:
-        #                 if SERIAL_READY:
-        #                     ser.write("b;".encode('utf-8'))
-        #                 if DEVELOPING:
-        #                     print("Serial: b;")
-        #                 directionSentFlag = 1  # Round is anticlockwise
-               
-                        
-            #Checking for orange line
-            # for cntour_index, contour in enumerate(orange_line_contours): 
-            #     area = cv2.contourArea(contour)
-            #     #print("orange = ", area)
-            #     if area > MIN_LINE_AREA:
-            #         if(current_time - orange_line_timer > lineInterval):
-            #             orange_line_count +=1
-            #             orange_line_timer = current_time
-            #         if directionSentFlag == 0:
-            #             if SERIAL_READY:
-            #                 ser.write("o;".encode('utf-8'))
-            #             if DEVELOPING: 
-            #                 print("Serial: o;")
-            #             directionSentFlag = -1 # Round is clockwise
+                    if directionSentFlag == 0:
+                        if SERIAL_READY:
+                            ser.write("b;".encode('utf-8'))
+                        if DEVELOPING:
+                            print("Serial: b;")
+                        directionSentFlag = 1  # Round is anticlockwise
+                           
+            #   Checking for orange line
+            for cntour_index, contour in enumerate(orange_line_contours): 
+                area = cv2.contourArea(contour)
+                if area > MIN_LINE_AREA:
+                    if(current_time - orange_line_timer > lineInterval):
+                        orange_line_count +=1
+                        orange_line_timer = current_time
+                    if directionSentFlag == 0:
+                        if SERIAL_READY:
+                            ser.write("o;".encode('utf-8'))
+                        if DEVELOPING: 
+                            print("Serial: o;")
+                        directionSentFlag = -1 # Round is clockwise
             
             # Checking for lap completion 
             # if orange_line_count==12:
@@ -356,9 +351,6 @@ while True:
             #     #time.sleep(1)
             #     line_count = -1  # We won't count lines until a new lap is started by pressing the button
 
-        
-
-     
                 
         # --- Get Trackbar Positions for general HSV tuning ---
         if TUNE_HSV == 1 and DEVELOPING==1:
@@ -423,32 +415,35 @@ while True:
         contours_green, _ = cv2.findContours(
             green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE   
         )
+
         obstaclePresent = 0
         obstacleArea = 0
-        # for contour_id, contour in enumerate(contours_green):
-        #     area = cv2.contourArea(contour)
-        #     if area > MIN_OBJECT_AREA: #If the distance reading has been reported once, we won't send it over and over again 
-        #         x,y,w,h = cv2.boundingRect(contour) #Assuming that the camera's lense surface is parallel to one of the side of the wro obstacle
-        #         distance = math.floor(estimate_distance(h))
-        #         if DEVELOPING:
-        #             cv2.rectangle(green_masked_frame, (x, y), (x + w, y + h), (255, 255,0), 2)
-        #             cv2.putText(green_masked_frame, str(distance), (int(x+(w/2) - 10), int(y - 20)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 ); 
-        #         obstaclePresent = 1
-        #         break
+        distance = 0
 
-        # if obstaclePresent :
-        #         if serialFlag2==1:
-        #             if SERIAL_READY==1: 
-        #                 ser.write(f"G:{distance};".encode('utf-8'))
-        #             if DEVELOPING:
-        #                 print(f"Serial: G:{distance};")
-        #             serialFlag2 = 0  #The object is present in front of the vehicle, now we can send a 0 distance while it goes beyond the vision range. 
-        # elif serialFlag2 ==0: # Camera is not encountering any blue object and we haven't reported it to the LLM 
-        #                 if SERIAL_READY==1: 
-        #                     ser.write("G:0;".encode('utf-8')) #Tells the LLM(low level microcontroller) that we are not seeing any blue object right now
-        #                 if DEVELOPING:    
-        #                     print("Serial: G:0; ")
-        #                 serialFlag2 = 1
+        for contour_id, contour in enumerate(contours_green):
+            area = cv2.contourArea(contour)
+            if area > MIN_OBJECT_AREA: #If the distance reading has been reported once, we won't send it over and over again 
+                x,y,w,h = cv2.boundingRect(contour) #Assuming that the camera's lense surface is parallel to one of the side of the wro obstacle
+                object_center_x = int(x + (w/2))
+                value = int(FRAME_CENTER_X - object_center_x)
+                error = value - setPoint
+                distance = math.floor(estimate_distance(h))
+                if DEVELOPING:
+                    cv2.rectangle(green_masked_frame, (x, y), (x + w, y + h), (255, 255,0), 2)
+                    cv2.putText(green_masked_frame, str(distance), (int(x+(w/2) - 10), int(y - 20)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 ); 
+                obstaclePresent = 1
+                break
+
+        if obstaclePresent:
+               if SERIAL_READY==1: 
+                    ser.write(f"G:{distance};".encode('utf-8'))
+               if DEVELOPING:
+                    print(f"Serial: G:{distance};")
+
+        else:
+            if SERIAL_READY==1:  ser.write("G:0;".encode('utf-8'))
+            if DEVELOPING==1:   print("Serial: G:0;")
+        
 
         # 1. Detect Red objects
         red_mask1 = cv2.inRange(hsv, lower_bound1_red, upper_bound1_red)
@@ -459,10 +454,11 @@ while True:
             cv2.putText(red_masked_frame, "Red object", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2); 
         contours_red, _ = cv2.findContours(
             red_mask_combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
         obstaclePresent = 0
         obstacleArea = 0
-
         distance = 0
+
         for contour_id, contour in enumerate(contours_red):
             area = cv2.contourArea(contour)
             if area > MIN_OBJECT_AREA: #If the distance reading has been reported once, we won't send it over and over again 
@@ -479,17 +475,13 @@ while True:
 
         if obstaclePresent:
                if SERIAL_READY==1: 
-                    # if distance < frontDistance: 
-                        # ser.write(f"Z:{distance};".encode('utf-8'))
-                        # if DEVELOPING:
-                            # print(f"Serial: Z:{distance};")
-                    # elif distance > frontDistance: 
-                        ser.write(f"E:{error};".encode('utf-8'))
-                        if DEVELOPING:
-                            print(f"Serial: E:{error};")
+                    ser.write(f"R:{distance};".encode('utf-8'))
+               if DEVELOPING:
+                    print(f"Serial: R:{distance};")
+
         else: 
-            ser.write("E:0;".encode('utf-8')); 
-        
+            if SERIAL_READY==1:  ser.write("R:0;".encode('utf-8'))
+            if DEVELOPING==1:   print("Serial: R:0;")
 
  
            

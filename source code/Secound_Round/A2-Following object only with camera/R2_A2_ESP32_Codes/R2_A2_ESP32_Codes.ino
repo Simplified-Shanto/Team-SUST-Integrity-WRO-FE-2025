@@ -18,8 +18,7 @@ double Ki = 0;
 int lineInterval = 1000;  //time (ms) to wait in the image processing programme between lines counted.
 int stopDelay = 1000;     //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
 double value = 0;         // Stores the difference between the left and right readings.
-double sonarError = 0;         // The difference between value and setpoint.
-float obstacleError = 0; 
+double error = 0;         // The difference between value and setpoint.
 double lastError = 0;
 double PIDangle = 0;
 double integralError = 0;
@@ -36,15 +35,15 @@ double dynamicSetPoint = 0;  //This setpoint is assigned after determining the r
 int setPointMultiplier = 1;  // -1 = round is clockwise 1 = round is anticlockwise
 int terminalDistanceThreshold = 200;
 short restrictedSteer = 35;
-short unrestrictedSteer = 45;
-int steerAngle = unrestrictedSteer;  // steerAngle = maximum angle used for steering currently
-int angle; 
+short unrestrictedSteer = 40;
+int steerAngle = restrictedSteer;  // steerAngle = maximum angle used for steering currently
+
 
 
 void setup() {
   Serial.begin(115200);
   preferences.begin("wrobot", false);
-  // preferences.clear();  //Only uncomment it when you have the first round code uploaded currently. Upload this code. Then comment this line again.
+ // preferences.clear();  //Only uncomment it when you have the first round code uploaded currently. Upload this code. Then comment this line again.
   lineInterval = preferences.getInt("lineInterval", lineInterval);
   stopDelay = preferences.getInt("stopDelay", stopDelay);
   Kp = preferences.getDouble("Kp", Kp);
@@ -91,20 +90,12 @@ int roundDirection = 0;  // 0 = clockwise 1 = ccw
 
 void loop() {
   if (Serial.available()) {
-    digitalWrite(ledPin, HIGH); 
     String command = Serial.readStringUntil(';');
     handleSerialCommand(command);
-  }
-  else
-  {
-    digitalWrite(ledPin, LOW); 
   }
   rightDistance = rightSonar.ping_cm();
   leftDistance = leftSonar.ping_cm();
   frontDistance = frontSonar.ping_cm();
-
-
-
   /*
 
 
@@ -131,7 +122,7 @@ void loop() {
   {
     steerAngle = unrestrictedSteer;
     if (setPoint != 0) {
-       // We need to devise some logic here, to avoid wall hits, overturning etc things when the steering is still being done by the changed setpoint.
+       // We need to devise some logic here, to avoid wall hits, overturning etc things when the steering is still being done by the changed setpoint. 
     } else if (rightDistance == 0 && leftDistance != 0)  // 1 0
     {
       rightDistance = terminalDistanceThreshold;
@@ -167,35 +158,23 @@ void loop() {
 
 
   handleButtonPress();
-  // integralError += error;
-  // // optional: limit integral to prevent windup
-  // if (integralError > 1000) integralError = 1000;
-  // if (integralError < -1000) integralError = -1000;
+  integralError += error;
+  // optional: limit integral to prevent windup
+  if (integralError > 1000) integralError = 1000;
+  if (integralError < -1000) integralError = -1000;
   //   67         84,             7   -> When the vehicle follows the right wall
   //  -67         7 ,            84   -> When the vehicle follows the left wall
   value = leftDistance - rightDistance;
-  sonarError = value - setPoint;
+  error = value - setPoint;
 
-    PIDangle = obstacleError * Kp
-              + (obstacleError - lastError) * Kd + sonarError * Ki;
-           
-    lastError = obstacleError;
-
+  PIDangle = error * Kp
+             + (error - lastError) * Kd
+             + (integralError * Ki);
+  lastError = error;
   if (editParameter == 1) { configureParameters(); }
 
   if (gameStarted == 1) {
-  if(rightDistance < 8) { steering_servo.write(leftAngle);  delay(20);
-    } // To avoid extreme collissions. 
-  else if(leftDistance < 8) { steering_servo.write(rightAngle);  delay(20);
-    }
-  else
-  {
-    if(obstacleError!=0)
-    {
-      writeAngleToServo();
-    }
-
-  }
+    writeAngleToServo(); 
   }
 }
 
@@ -207,9 +186,9 @@ void changeSetPoint() {
   if (redObstacleDistance == 0 && greenObstacleDistance == 0) {
     setPoint = 0;
   } else if (redObstacleDistance > greenObstacleDistance) {
-    setPoint = 60;  //Green obstacle is near the vehicle, so it will try to follow the left wall
+    setPoint = 65 ;  //Green obstacle is near the vehicle, so it will try to follow the left wall
   } else if (redObstacleDistance < greenObstacleDistance) {
-    setPoint = -60;
+    setPoint = -65 ;
   }
 }
 
@@ -266,39 +245,14 @@ void handleSerialCommand(String command) {
         setPointMultiplier = -1;
         changeSetPoint();  //Fix the sign of the setpoint
         break;
-      case 'Z':  //Red obstacle's distance
-  
-        //obstacleError = 0; //Disabling the pid correction 
-        // angle = midAngle + maxSteer*((45 - constant_value)/45);
-        //     if(angle >= leftAngle && angle <= rightAngle)
-        // {
-        //   steering_servo.write(angle); 
-        // }
-        // Serial.print("Angle = ");
-        // Serial.println(angle); 
-       // digitalWrite(buzzerPin, HIGH); 
-      
-        // redObstacleDistance = int(constant_value);  // obstacle distance will be 0 when it is beyond the vision range of the vehicle
-        // changeSetPoint();
+      case 'R':                                     //Red obstacle's distance
+        redObstacleDistance = int(constant_value);  // obstacle distance will be 0 when it is beyond the vision range of the vehicle
+        changeSetPoint();
         break;
       case 'G':                                       //Green obstacle's distance
         greenObstacleDistance = int(constant_value);  // obstacle distance will be 0 when it is beyond the vision range of the vehicle
         changeSetPoint();
         break;
-      case 'E':
-        obstacleError = int(constant_value);
-        if(obstacleError!=0)
-        {
-          setPoint = 67; 
-          
-        }
-       else  {
-
-        setPoint = 0; 
-          
-        }
-        break; 
-
 
       case 'p':  //Proportional of PID
         Kp = constant_value;
@@ -308,7 +262,6 @@ void handleSerialCommand(String command) {
         Kd = constant_value;
         preferences.putDouble("Kd", Kd);
         break;
-
       case 's':  //Speed of vehicle
         forwardSpeed = int(constant_value);
         preferences.putInt("speed", forwardSpeed);
