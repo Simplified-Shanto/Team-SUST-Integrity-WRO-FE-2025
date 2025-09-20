@@ -14,9 +14,9 @@
 Preferences preferences;
 double Kp = 3;    //5
 double Kd = 0.3;  //1
-double Ki = 0;
+double Ki = 1;
 int lineInterval = 1000;  //time (ms) to wait in the image processing programme between lines counted.
-float stopDelay = 0;     //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
+float stopDelay = 0.3;     //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
 double value = 0;         // Stores the difference between the left and right readings.
 double error = 0;         // The difference between value and setpoint.
 double lastError = 0;
@@ -28,10 +28,10 @@ double integralError = 0;
 
 int redObstacleDistance = 0;
 int greenObstacleDistance = 0;
-int greenObstacleX = 0; 
-int redObstacleX = 0; 
-int redSetPoint = -120; // It'll try to keep the obstacle 120 pixel right from the center of the frame. 
-int greenSetPoint = 120; // It'll try to keep the obstacle 120 pixel left from the center of the frame. 
+int greenObstacleX = frameCenterX; 
+int redObstacleX = frameCenterX; 
+int redSetPoint = 200; // It'll try to keep the obstacle 120 pixel right from the center of the frame. 
+int greenSetPoint = -200; // It'll try to keep the obstacle 120 pixel left from the center of the frame. 
 float kd = 0; // We'll utilise stopDelay for obstacle avoidance kd, kd = float(stopDelay)/1000.0; 
 
 
@@ -49,7 +49,7 @@ int steerAngle = restrictedSteer;  // steerAngle = maximum angle used for steeri
 void setup() {
   Serial.begin(115200);
   preferences.begin("wrobot", false);
- // preferences.clear();  //Only uncomment it when you have the first round code uploaded currently. Upload this code. Then comment this line again.
+  //preferences.clear();  //Only uncomment it when you have the first round code uploaded currently. Upload this code. Then comment this line again.
   lineInterval = preferences.getInt("lineInterval", lineInterval);
   stopDelay = preferences.getFloat("stopDelay", stopDelay);
   Kp = preferences.getDouble("Kp", Kp);
@@ -94,46 +94,64 @@ short frontDistance = 0;
 int roundDirection = 0;  // 0 = clockwise 1 = ccw
 
 
-#define obstacleDistanceThreshold  50  // We'll take turning obstacle handling approach when the obstacle is within 50 cm towards the vehicle. 
+#define obstacleDistanceThreshold  60  // We'll take turning obstacle handling approach when the obstacle is within 50 cm towards the vehicle. 
 
 void loop() {
+
   if (Serial.available()) {
+    digitalWrite(ledPin, HIGH); 
     String command = Serial.readStringUntil(';');
     handleSerialCommand(command);
   }
-    handleButtonPress();
-    if (editParameter == 1) { configureParameters(); }
+  else { digitalWrite(ledPin, LOW); }
+  
+  handleButtonPress();
+  if (editParameter == 1) { configureParameters(); }
 
   rightDistance = rightSonar.ping_cm();
   leftDistance = leftSonar.ping_cm();
   frontDistance = frontSonar.ping_cm();
 
+  //  if(greenObstacleDistance==0 || redObstacleDistance <= greenObstacleDistance)
+  //   {
+  //        value = frameCenterX - redObstacleX; 
+  //        error = value - redSetPoint; 
+  //   }
 
-  if((redObstacleDistance != 0 && redObstacleDistance < obstacleDistanceThreshold )|| (greenObstacleDistance!=0 && greenObstacleDistance < obstacleDistanceThreshold ))
+
+
+      // display.clearDisplay(); 
+      // display.setCursor(0, 0); 
+      // display.print("oPID: "); 
+      // display.println(value); 
+      // display.println(millis()/1000); 
+      // display.display(); 
+
+  if((redObstacleDistance != 0 && (redObstacleDistance < obstacleDistanceThreshold) )|| (greenObstacleDistance!=0 && (greenObstacleDistance < obstacleDistanceThreshold )))
   {
-    if(redObstacleDistance < greenObstacleDistance)
+    if(greenObstacleDistance==0) greenObstacleDistance = 2000; 
+    if(redObstacleDistance==0) redObstacleDistance = 2000; 
+    if( (greenObstacleDistance <= redObstacleDistance)) //We are tackling green obstacle. 
     {
-         value = frameCenterX - redObstacleX; 
-         error = value - redSetPoint; 
-    }
-    else if(greenObstacleDistance < redObstacleDistance)
-    {
-         value = frameCenterX - greenObstacleX; 
-         error = value - greenSetPoint; 
-    }
- 
-      PIDangle = error * Ki 
-                 + (error - lastError) * (stopDelay); 
+      value = frameCenterX - greenObstacleX; 
+      error = value - greenSetPoint; 
+       PIDangle = error * Ki + (error - lastError) * stopDelay; 
       lastError = error; 
+      if(greenObstacleDistance < 15) { steering_servo.write(midAngle); //Trying to cross the obstacle.
+       }
+      else { writeAngleToServo(); }
+    }
+    if( (redObstacleDistance <= greenObstacleDistance))
+    {
+      value = frameCenterX - redObstacleX; 
+      error = value - redSetPoint; 
+      PIDangle = error * Ki + (error - lastError) * stopDelay; 
+      lastError = error; 
+      if(redObstacleDistance < 15) { steering_servo.write(midAngle); //Trying to cross the obstacle straight by the side.
+       }
+      else { writeAngleToServo(); }
+    }
 
-      // Serial.print("Kd = "); 
-      // Serial.print(stopDelay/1000.0);
-      // Serial.print(" PIDangle = "); 
-      // Serial.print(PIDangle); 
-      // Serial.print(" redX = "); 
-      // Serial.print(redObstacleX); 
-      // Serial.print(" greenX = "); 
-      // Serial.println(greenObstacleX); 
   }
 
   else
@@ -181,16 +199,16 @@ void loop() {
   //  -67         7 ,            84   -> When the vehicle follows the left wall
   value = leftDistance - rightDistance;
   error = value - setPoint;
-  PIDangle = error * Kp
-             + (error - lastError) * Kd
-             + (integralError * Ki);
+  PIDangle = error * Kp + (error - lastError) * Kd;
   lastError = error;
+
+    if (gameStarted == 1) {
+   writeAngleToServo();  
+  }
   }
 
   //Mechanism 2:
-  if (gameStarted == 1) {
-    writeAngleToServo(); 
-  }
+
 }
 
 
@@ -212,7 +230,7 @@ void showParameters() {
   display.setCursor(0, 0);
   display.print("P:");
   display.print(Kp);
-  display.print(" I:");
+  display.print(" Op:");
   display.print(Ki);
   display.print(" D:");
   display.println(Kd);
@@ -225,7 +243,7 @@ void showParameters() {
   display.println(unrestrictedSteer);
   display.print("Line Intv: ");
   display.println(lineInterval);
-  display.print("stopDel: ");
+  display.print("oKd: ");
   display.println(stopDelay);
 
 
@@ -270,11 +288,9 @@ void handleSerialCommand(String command) {
         break;
       case 'g': //Green obstacle X value in the frame
         greenObstacleX = int(constant_value); 
-        Serial.println("Received gX"); 
         break; 
       case  'w': //Red obstacle X value in the frame 
         redObstacleX = int(constant_value); 
-        Serial.println("Received rX"); 
         break; 
       case 'p':  //Proportional of PID
         Kp = constant_value;
@@ -338,7 +354,7 @@ void configureParameters() {
 
   if (parameterIndex <= 5) {
     if (editParameter == 1 && parameterIndex == 3) { display.print("> "); }
-    display.print("Ki:");
+    display.print("oKp:");
     display.println(Ki);
     display.println();
   }
@@ -359,7 +375,7 @@ void configureParameters() {
 
   if (parameterIndex <= 8) {
     if (editParameter == 1 && parameterIndex == 6) { display.print("> "); }
-    display.print("StopDel: ");
+    display.print("oKd: ");
     display.println(stopDelay);
     display.println();
   }
