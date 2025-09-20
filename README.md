@@ -91,7 +91,7 @@ To keep everything organized and transparent, we structured this GitHub repo wit
 
 Here’s the process flow of how the robot completes laps in Round 1:
 
-![Open Round Process]()
+![Open Round Process](schematic/open%20round%20pc.svg)
 
 ---
 
@@ -99,7 +99,8 @@ Here’s the process flow of how the robot completes laps in Round 1:
 
 Here’s the process flow of how the robot avoids obstacles in Round 2:
 
-![Obstacle Round Process]([obstacle%20round%20pc.svg](https://github.com/Simplified-Shanto/Team-SUST-Integrity-WRO-FE-2025/blob/main/schematic/obstacle%20round%20pc.svg))
+![Obstacle Round Process](schematic/obstacle%20round%20pc.svg)
+
 
 ---
 
