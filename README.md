@@ -1,7 +1,7 @@
-# 👥 About the Team – **Team Integral Constant**
+# 👥 About the Team – **Team SUST Integrity**
 ---
 
-## 👥 **Team Integral Constants"**
+## 👥 **Team SUST Integrity**
 
 - **Nayeem Islam Shanto**  – Team Leader, Hardware Developer | [islamnayeem386@gmail.com](mailto:islamnayeem386@gmail.com)
 - **Dipanjan Ghosh**  –  Schematic and Documentation Developer | [priomghosh33@gmail.com](mailto:priomghosh33@gmail.com)
