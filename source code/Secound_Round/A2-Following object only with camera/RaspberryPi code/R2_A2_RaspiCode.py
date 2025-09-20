@@ -5,21 +5,21 @@
 #!/usr/bin/env python3
 
 # --- Configuration ---
-MACHINE = 0  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
+MACHINE = 1  # 0 = WINDOWS, 1 = LINUX OS, (Raspberry pie)
 DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
  
-SERIAL_READY = 0 #Whether a serial device is connected or not
-CAM_TYPE = 1 # 0  = Raspicamera, 1  = webcam.
-FOCAL_LENGTH_PX = 530 #Focal length in pixels - 530 for micropack webcam 335 - raspi cam
+SERIAL_READY = 1 #Whether a serial device is connected or not
+CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam.
+FOCAL_LENGTH_PX = 335 #Focal length in pixels - 530 for micropack webcam 335 - raspi cam
 BRIGHT_LIGHT = 0 # Bright_light = 1 indicates that we are testing things in bright daylight, bright_light = 0 means that we are testing this thing in night under led lights
 TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
 
 CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam
 COM_PORT = 4
 TUNE_VEHICLE_PARAMETERS = 0
-SHOW_LINE_ANALYSIS = 0
+SHOW_LINE_ANALYSIS = 1
 
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
@@ -497,25 +497,24 @@ while True:
 
         if DEVELOPING:  # Provide visual output of the program 
             if SHOW_LINE_ANALYSIS:
-                combined_line_masked_frame = cv2.bitwise_or(blue_line_masked_frame, orange_line_masked_frame)
-                cv2.imshow("Line Frame", combined_line_masked_frame)
+            
+               if directionSentFlag==-1: 
+                    cv2.putText(orange_line_masked_frame, "Clockwise", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 2)
+               elif directionSentFlag==1: 
+                    cv2.putText(blue_line_masked_frame, "Anticlockwise", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+
+               stackedImages = stackImages(0.6, 
+                                                   ( [blue_line_masked_frame] , [orange_line_masked_frame]))
+               cv2.imshow("Stacked Frames", stackedImages)
+
+
 
             combined_obstacle_masked_frame = cv2.bitwise_or(green_masked_frame, red_masked_frame)
             cv2.line(combined_obstacle_masked_frame, (int(FRAME_WIDTH/2), 0), (int(FRAME_WIDTH/2), int(FRAME_HEIGHT)), (0, 165, 255), 2)
             cv2.imshow("Obstacle Frame", combined_obstacle_masked_frame)
             
 
-            if TUNE_HSV==1: # We'll only show those segmented staffs only while tuning hsv color values. Otherwise a single unified view will be allowed. 
-                if directionSentFlag==-1: 
-                    cv2.putText(orange_line_masked_frame, "Clockwise", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 2)
-                elif directionSentFlag==1: 
-                    cv2.putText(blue_line_masked_frame, "Anticlockwise", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-
-                stackedImages = stackImages(0.6, ([frame, green_masked_frame, red_masked_frame],
-                                                    [blue_line_masked_frame, orange_line_masked_frame, combined_line_masked_frame]))
-                cv2.imshow("Stacked Frames", stackedImages)
-
-
+ 
             key = cv2.waitKey(1)  #Purpose of the above expression: It waits for a speciefied amount of time(in milliseconds) for a key event to occur. This small delay is crucial when processing video streams, as it allows the system to display each frame for a brief period, creating the illusion of continuosu motion. Without this delay, the frames would be processed and displayed so quickly that the video would appear as a blur or not be visible at all. And in most cases, the window will have "Not responding" problem and ultimately crash. During this delay, cv2.waitKey(1) also checks if any key has been pressed. If any key has been prssed. If a key is pressed within the 1-millisecond window, it returns the ascii value fo that pressed key. If no key is pressed within that time, it returns -1. 
             if key == ord('q'): # Stops the execution of the entire python program
                 if SERIAL_READY==1:
