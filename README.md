@@ -721,4 +721,10 @@ Our current strategy for the Obstacle Challenge round is to avoid obstacles by c
 - Then when it encounters a red object, it changes its setpoint from being into the middle towards the right wall(10 cm away from the right wall). The same approach is followed in case of a green object, only the difference being that it now follows the left wall.
 - If it does not encounter any object the setpoint is again set to the center.
 
+---
+
+## 📜 License
+
+© 2025 Team SUST Integrity – WRO Future Engineers  
+This project is licensed under the [MIT License](LICENSE).  
 
