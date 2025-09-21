@@ -310,37 +310,38 @@ while True:
             #This basically measures, which color of threshold area do we get first
             #Checking for blue line
         current_time = time.time()*1000
-    
+
+        max_blue_line_area = 0
         if blue_line_count!=-1:  # We'll only do the following processes when blue_line_count is set to zero by pressing the game start button in the vehicle and receiving serial command 'r' from the LLMC. The reason is avoiding early count of the lines by environmental noise before the round has started. 
             for contour_index, contour in enumerate(blue_line_contours): 
                 area = cv2.contourArea(contour)
-                print(f"Blue Ara = {area}"); 
-                if area > MIN_LINE_AREA:
-                    if(current_time - blue_line_timer > lineInterval):
-                        blue_line_count +=1
-                        blue_line_timer = current_time
-
-                    if directionSentFlag == 0:
-                        if SERIAL_READY:
-                            ser.write("b;".encode('utf-8'))
-                        if DEVELOPING:
-                            print("Serial: b;")
-                        directionSentFlag = 1  # Round is anticlockwise
+                print(f"Blue Area = {area}"); 
+                max_blue_line_area = max(max_blue_line_area, area)
+                    # if(current_time - blue_line_timer > lineInterval):
+                    #     blue_line_count +=1
+                    #     blue_line_timer = current_time
                            
             #   Checking for orange line
+            max_orange_line_area = 0
             for cntour_index, contour in enumerate(orange_line_contours): 
                 area = cv2.contourArea(contour)
                 print(f"Orange Aera = {area}"); 
-                if area > MIN_LINE_AREA:
-                    if(current_time - orange_line_timer > lineInterval):
-                        orange_line_count +=1
-                        orange_line_timer = current_time
-                    if directionSentFlag == 0:
+                max_orange_line_area = max(max_orange_line_area, area)
+     
+            if directionSentFlag == 0:
+                if (max_orange_line_area > MIN_LINE_AREA) and (max_orange_line_area > max_blue_line_area): 
                         if SERIAL_READY:
                             ser.write("o;".encode('utf-8'))
                         if DEVELOPING: 
                             print("Serial: o;")
                         directionSentFlag = -1 # Round is clockwise
+                elif (max_blue_line_area > MIN_LINE_AREA) and (max_blue_line_area > max_orange_line_area):
+                        if SERIAL_READY:
+                            ser.write("b;".encode('utf-8'))
+                        if DEVELOPING:
+                            print("Serial: b;")
+                        directionSentFlag = 1  # Round is anticlockwise
+
             
             # Checking for lap completion 
             # if orange_line_count==12:

@@ -94,7 +94,7 @@ short frontDistance = 0;
 int roundDirection = 0;  // 0 = clockwise 1 = ccw
 
 
-#define obstacleDistanceThreshold  60  // We'll take turning obstacle handling approach when the obstacle is within 50 cm towards the vehicle. 
+#define obstacleDistanceThreshold  100  // We'll take turning obstacle handling approach when the obstacle is within 50 cm towards the vehicle. 
 
 void loop() {
 
@@ -137,7 +137,7 @@ void loop() {
       error = value - greenSetPoint; 
        PIDangle = error * Ki + (error - lastError) * stopDelay; 
       lastError = error; 
-      if(greenObstacleDistance < 15) { steering_servo.write(midAngle); //Trying to cross the obstacle.
+      if(greenObstacleDistance < 25) { steering_servo.write(midAngle); //Trying to cross the obstacle.
        }
       else { writeAngleToServo(); }
     }
@@ -147,7 +147,7 @@ void loop() {
       error = value - redSetPoint; 
       PIDangle = error * Ki + (error - lastError) * stopDelay; 
       lastError = error; 
-      if(redObstacleDistance < 15) { steering_servo.write(midAngle); //Trying to cross the obstacle straight by the side.
+      if(redObstacleDistance < 25) { steering_servo.write(midAngle); //Trying to cross the obstacle straight by the side.
        }
       else { writeAngleToServo(); }
     }
