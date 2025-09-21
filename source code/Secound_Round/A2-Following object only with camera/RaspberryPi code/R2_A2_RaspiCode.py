@@ -14,7 +14,7 @@ SERIAL_READY = 1 #Whether a serial device is connected or not
 CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam.
 FOCAL_LENGTH_PX = 335 #Focal length in pixels - 530 for micropack webcam 335 - raspi cam
 BRIGHT_LIGHT = 0 # Bright_light = 1 indicates that we are testing things in bright daylight, bright_light = 0 means that we are testing this thing in night under led lights
-TUNE_HSV = 0 # whether we want to tune the hsv color values for different image elements. 
+TUNE_HSV = 1 # whether we want to tune the hsv color values for different image elements. 
 
 CAMERA_INDEX = 0    # Select which cam will be used  #1 - laptop's camera #0 - micropack webcam
 COM_PORT = 4
@@ -25,7 +25,7 @@ FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
 FRAME_CENTER_X = FRAME_WIDTH/2
 
-MIN_OBJECT_AREA = 500  # Minimum contour area to consider an object (adjust as needed)
+MIN_OBJECT_AREA = 400  # Minimum contour area to consider an object (adjust as needed)
 MIN_LINE_AREA = 1000
 
 
@@ -314,6 +314,7 @@ while True:
         if blue_line_count!=-1:  # We'll only do the following processes when blue_line_count is set to zero by pressing the game start button in the vehicle and receiving serial command 'r' from the LLMC. The reason is avoiding early count of the lines by environmental noise before the round has started. 
             for contour_index, contour in enumerate(blue_line_contours): 
                 area = cv2.contourArea(contour)
+                print(f"Blue Ara = {area}"); 
                 if area > MIN_LINE_AREA:
                     if(current_time - blue_line_timer > lineInterval):
                         blue_line_count +=1
@@ -329,6 +330,7 @@ while True:
             #   Checking for orange line
             for cntour_index, contour in enumerate(orange_line_contours): 
                 area = cv2.contourArea(contour)
+                print(f"Orange Aera = {area}"); 
                 if area > MIN_LINE_AREA:
                     if(current_time - orange_line_timer > lineInterval):
                         orange_line_count +=1
