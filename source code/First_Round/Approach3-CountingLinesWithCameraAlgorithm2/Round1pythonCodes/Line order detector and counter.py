@@ -222,7 +222,7 @@ while True:
                         directionSentFlag = 1  # Round is anticlockwise
             
             # Line counting and checking for lap completion 
-            if (current_time - orange_line_timer > lineInterval) and (max_orange_line_area >= 1000): # We are considering a very small area for line counting compared to the   MIN_LINE_AREA used for line order detection , because whihle moving really fast, not all contours are visible, so we will have to detect for very small contour area 
+            if (current_time - orange_line_timer > lineInterval) and (max_orange_line_area >= 500): # We are considering a very small area for line counting compared to the   MIN_LINE_AREA used for line order detection , because whihle moving really fast, not all contours are visible, so we will have to detect for very small contour area 
                 orange_line_timer = current_time
                 orange_line_count+=1
                 if orange_line_count==12:
