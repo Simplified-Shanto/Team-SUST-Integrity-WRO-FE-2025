@@ -12,27 +12,27 @@
 #include "display.h"
 
 Preferences preferences;
-double Kp = 3;    //5
-double Kd = 0.3;  //1
-double Ki = 1;
+double Kp = 3;            //5
+double Kd = 0.3;          //1
+double Ki = 1;            // Used as the Kp for the camera obstacle following.
 int lineInterval = 1000;  //time (ms) to wait in the image processing programme between lines counted.
-float stopDelay = 0.3;     //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
+float stopDelay = 0.3;    //when 12 lines are counted, the SBC sends the lap complete command after this fixed delay(ms)
 double value = 0;         // Stores the difference between the left and right readings.
 double error = 0;         // The difference between value and setpoint.
 double lastError = 0;
 double PIDangle = 0;
 double integralError = 0;
 
-#define parameterCount 9  // Number of configurable parameters
-#define frameCenterX  320 
+#define parameterCount 9  // Number of configurable and non-configurable parameters
+#define frameCenterX 320
 
 int redObstacleDistance = 0;
 int greenObstacleDistance = 0;
-int greenObstacleX = frameCenterX; 
-int redObstacleX = frameCenterX; 
-int redSetPoint = 200; // It'll try to keep the obstacle 120 pixel right from the center of the frame. 
-int greenSetPoint = -200; // It'll try to keep the obstacle 120 pixel left from the center of the frame. 
-float kd = 0; // We'll utilise stopDelay for obstacle avoidance kd, kd = float(stopDelay)/1000.0; 
+int greenObstacleX = frameCenterX;
+int redObstacleX = frameCenterX;
+int redSetPoint = 200;     // It'll try to keep the obstacle 120 pixel right from the center of the frame.
+int greenSetPoint = -200;  // It'll try to keep the obstacle 120 pixel left from the center of the frame.
+float kd = 0;              // We'll utilise stopDelay for obstacle avoidance kd, kd = float(stopDelay)/1000.0;
 
 
 double setPoint = 0;  // The amount of difference in reading of the two ultrasonic sensor we want.
@@ -94,17 +94,18 @@ short frontDistance = 0;
 int roundDirection = 0;  // 0 = clockwise 1 = ccw
 
 
-#define obstacleDistanceThreshold  60  // We'll take turning obstacle handling approach when the obstacle is within 50 cm towards the vehicle. 
+#define obstacleDistanceThreshold 60  // We'll take turning obstacle handling approach when the obstacle is within 50 cm towards the vehicle.
 
 void loop() {
 
   if (Serial.available()) {
-    digitalWrite(ledPin, HIGH); 
+    digitalWrite(ledPin, HIGH);
     String command = Serial.readStringUntil(';');
     handleSerialCommand(command);
+  } else {
+    digitalWrite(ledPin, LOW);
   }
-  else { digitalWrite(ledPin, LOW); }
-  
+
   handleButtonPress();
   if (editParameter == 1) { configureParameters(); }
 
@@ -114,149 +115,141 @@ void loop() {
 
   //  if(greenObstacleDistance==0 || redObstacleDistance <= greenObstacleDistance)
   //   {
-  //        value = frameCenterX - redObstacleX; 
-  //        error = value - redSetPoint; 
+  //        value = frameCenterX - redObstacleX;
+  //        error = value - redSetPoint;
   //   }
 
 
 
-      // display.clearDisplay(); 
-      // display.setCursor(0, 0); 
-      // display.print("oPID: "); 
-      // display.println(value); 
-      // display.println(millis()/1000); 
-      // display.display(); 
+  // display.clearDisplay();
+  // display.setCursor(0, 0);
+  // display.print("oPID: ");
+  // display.println(value);
+  // display.println(millis()/1000);
+  // display.display();
 
-  if((redObstacleDistance != 0 && (redObstacleDistance < obstacleDistanceThreshold) )|| (greenObstacleDistance!=0 && (greenObstacleDistance < obstacleDistanceThreshold )))
-  {
-        steerAngle = unrestrictedSteer;
-
-
-    if(rightDistance!=0 && rightDistance < 8) //wall hitting protection mechanism
-    {
-      steering_servo.write(leftAngle); 
-      delay(10); 
-    }
-    else if (leftDistance!=0 && leftDistance < 8) {
-      steering_servo.write(rightAngle); 
-      delay(10); 
-    }
-
-    if(greenObstacleDistance==0) greenObstacleDistance = 2000; 
-    if(redObstacleDistance==0) redObstacleDistance = 2000; 
-    if( (greenObstacleDistance <= redObstacleDistance)) //We are tackling green obstacle. 
-    {
-     // int sp = 0; 
-     // if(greenObstacleDistance < 45)  { sp = greenSetPoint; } // If the object is further than this distance, we'll only try to f
-      value = frameCenterX - greenObstacleX; 
-      error = value - greenSetPoint; 
-       PIDangle = error * Ki + (error - lastError) * stopDelay; 
-      lastError = error; 
-      if(greenObstacleDistance < 25) { steering_servo.write(midAngle); //Trying to cross the obstacle.
-       }
-      else { writeAngleToServo(); }
-    }
-    if( (redObstacleDistance <= greenObstacleDistance))
-    {
-      value = frameCenterX - redObstacleX; 
-      error = value - redSetPoint; 
-      PIDangle = error * Ki + (error - lastError) * stopDelay; 
-      lastError = error; 
-      if(redObstacleDistance < 25) { steering_servo.write(midAngle); //Trying to cross the obstacle straight by the side.
-       }
-      else { writeAngleToServo(); }
-    }
-
-  }
-
-  else
-  {
-    if ( rightDistance == 0 || leftDistance == 0 || (frontDistance != 0 && frontDistance < frontDistanceThreshold))  //Take a turning action on any of these events.
-  {
+  if ((redObstacleDistance != 0 && (redObstacleDistance < obstacleDistanceThreshold)) || (greenObstacleDistance != 0 && (greenObstacleDistance < obstacleDistanceThreshold))) {
     steerAngle = unrestrictedSteer;
-   if(frontDistance!=0)
-   {
 
-    if (rightDistance == 0 && leftDistance != 0)  // 1 0
+    if (rightDistance != 0 && rightDistance < 8)  //Right wall hitting protection mechanism
     {
-      rightDistance = terminalDistanceThreshold;
-      digitalWrite(buzzerPin, LOW);
-    } else if (leftDistance == 0 && rightDistance != 0)  //0 1
+      steering_servo.write(leftAngle);
+      delay(10);
+    } else if (leftDistance != 0 && leftDistance < 8) {  // Left wall hitting protection mechanism
+      steering_servo.write(rightAngle);
+      delay(10);
+    }
+
+    if (greenObstacleDistance == 0) greenObstacleDistance = 2000;  // Taking this obstacle out of focus
+    if (redObstacleDistance == 0) redObstacleDistance = 2000;      //Taking away focus from this obstacle
+    if ((greenObstacleDistance <= redObstacleDistance))            //We are tackling green obstacle.
     {
-      leftDistance = terminalDistanceThreshold;
-      digitalWrite(buzzerPin, LOW);
-    } else if (leftDistance != 0 && rightDistance != 0)  //1 1
-    {
-      if (leftDistance > rightDistance) {
-        leftDistance = terminalDistanceThreshold;
-      } else if (rightDistance > leftDistance) {
-        rightDistance = terminalDistanceThreshold;
-      }
-      digitalWrite(buzzerPin, LOW);
-    } else if (leftDistance == 0 && rightDistance == 0) {  //0 0 Both sonar sensor is reading zero, so we are resorting to the round direction for taking turns.
-      if (gameStarted == 1) {                              // Notifying that both sensor is currently reading zero.
-        digitalWrite(buzzerPin, HIGH);
-      }
-      if (setPointMultiplier == -1) {  //cw round
-        rightDistance = terminalDistanceThreshold;
-      } else if (setPointMultiplier == 1) {  //ccw round
-        leftDistance = terminalDistanceThreshold;
-      } else if (setPointMultiplier == 0)  // Round direction haven't been determined yet
-      {
-        //Do nothing, we don't know what to do now.
+      // int sp = 0;
+      // if(greenObstacleDistance < 45)  { sp = greenSetPoint; } // If the object is further than this distance, we'll only try to f
+      value = frameCenterX - greenObstacleX;
+      error = value - greenSetPoint;
+      PIDangle = error * Ki + (error - lastError) * stopDelay;
+      lastError = error;
+      if (greenObstacleDistance < 25) {
+        steering_servo.write(midAngle);  //Trying to cross the obstacle straight- cuz, when the vehcicle is too close to the object, it shows wrong X position and distance due to the curvature of the lense of the camera.
+      } else {
+        writeAngleToServo();
       }
     }
-    }
-    else
-    {
-      if (setPointMultiplier==-1) //cw round
-      {
-        rightDistance = 90 - (leftDistance + 10);  //Signel sensor pid. 
-      }
-      else if(setPointMultiplier == 1) // anti cw round
-      {
-        leftDistance = 90 - (rightDistance + 10); //Single sensor pid. 
-      }
-      else // round direction not determined, go straight. 
-      {
-        leftDistance = 40; 
-        rightDistance = 40; 
+    if ((redObstacleDistance <= greenObstacleDistance)) {
+      value = frameCenterX - redObstacleX;
+      error = value - redSetPoint;
+      PIDangle = error * Ki + (error - lastError) * stopDelay;
+      lastError = error;
+      if (redObstacleDistance < 25) {
+        steering_servo.write(midAngle);  //Trying to cross the obstacle straight by the side.
+      } else {
+        writeAngleToServo();
       }
     }
-  } else {
-    steerAngle = restrictedSteer;
+
   }
-  integralError += error;
-  // optional: limit integral to prevent windup
-  if (integralError > 1000) integralError = 1000;
-  if (integralError < -1000) integralError = -1000;
-  //   67         84,             7   -> When the vehicle follows the right wall
-  //  -67         7 ,            84   -> When the vehicle follows the left wall
-  value = leftDistance - rightDistance;
-  error = value - setPoint;
-  PIDangle = error * Kp + (error - lastError) * Kd;
-  lastError = error;
+
+  else  // There's no obstacle in the vision range under consideration, so follow normal tunnel-centered PID.
+  {
+    if (rightDistance == 0 || leftDistance == 0 || (frontDistance != 0 && frontDistance < frontDistanceThreshold))  //Take a turning action on any of these events.
+    {
+      steerAngle = unrestrictedSteer;
+      if (frontDistance != 0)  // No turning when the vehicle is facing a empty straight section
+      {
+        if (rightDistance == 0 && leftDistance != 0)  // 1 0
+        {
+          rightDistance = terminalDistanceThreshold;
+          digitalWrite(buzzerPin, LOW);
+        } else if (leftDistance == 0 && rightDistance != 0)  //0 1
+        {
+          leftDistance = terminalDistanceThreshold;
+          digitalWrite(buzzerPin, LOW);
+        } else if (leftDistance != 0 && rightDistance != 0)  //1 1
+        {
+          if (leftDistance > rightDistance) {
+            leftDistance = terminalDistanceThreshold;
+          } else if (rightDistance > leftDistance) {
+            rightDistance = terminalDistanceThreshold;
+          }
+          digitalWrite(buzzerPin, LOW);
+        } else if (leftDistance == 0 && rightDistance == 0) {       //0 0 Both sonar sensor is reading zero, so we are resorting to the round direction for taking turns.
+              if (gameStarted == 1) { digitalWrite(buzzerPin, HIGH); }  // Notifying that both sensor is currently reading zero.
+              
+              if (setPointMultiplier == -1) {                           //cw round
+                rightDistance = terminalDistanceThreshold;
+              } else if (setPointMultiplier == 1) {  //ccw round
+                leftDistance = terminalDistanceThreshold;
+              } else if (setPointMultiplier == 0)  // Round direction haven't been determined yet
+              {
+                //Do nothing, we don't know what to do now. Basically this doesn't happen, because the vehicle moves at a very slow-safe speed until the line order is 
+                // sent to it via serial. So with that speed, it's really unlikely to collide with walls for small periods of both sensors reading zero. 
+              }
+        }
+      } else {   // The vehicle has already taken turn, and is now facing straight toward a tunnel from the previous tunnel and either left or right sensor is signalling the turning event
+        if (setPointMultiplier == -1)  //cw round
+        {
+          rightDistance = 90 - (leftDistance + 10);  //Single sensor pid. Tunnel width = 90 cm, vehicle width = 10 cm. 
+        } else if (setPointMultiplier == 1)          // anti cw round
+        {
+          leftDistance = 90 - (rightDistance + 10);  //Single sensor pid.
+        } else                                       // round direction not determined, go straight.
+        {
+          leftDistance = 40;
+          rightDistance = 40;
+        }
+      }
+    } else { // We are in a straight tunnel section, no need to take sharp turns, so restrict the steerAngle to avoid the vehicle' swinging motion. 
+      steerAngle = restrictedSteer;
+    }
+
+    integralError += error;
+    // optional: limit integral to prevent windup
+    if (integralError > 1000) integralError = 1000;
+    if (integralError < -1000) integralError = -1000;
+    //   67         84,             7   -> When the vehicle follows the right wall
+    //  -67         7 ,            84   -> When the vehicle follows the left wall
+    value = leftDistance - rightDistance;
+    error = value - setPoint;
+    PIDangle = error * Kp + (error - lastError) * Kd;
+    lastError = error;
 
     if (gameStarted == 1) {
-   writeAngleToServo();  
-  }
+      writeAngleToServo();
+    }
   }
 
-  if(frontDistance!=0 && frontDistance < 10)
-  {
-    if(setPointMultiplier==-1)
-    {
-      steering_servo.write(rightAngle); 
-      delay(15); 
-    }
-    else if (setPointMultiplier==1) {
-      steering_servo.write(leftAngle); 
-      delay(15); 
+  if (frontDistance != 0 && frontDistance < 10) {
+    if (setPointMultiplier == -1) {
+      steering_servo.write(rightAngle);
+      delay(15);
+    } else if (setPointMultiplier == 1) {
+      steering_servo.write(leftAngle);
+      delay(15);
     }
   }
 
   //Mechanism 2:
-
 }
 
 
@@ -267,9 +260,9 @@ void changeSetPoint() {
   if (redObstacleDistance == 0 && greenObstacleDistance == 0) {
     setPoint = 0;
   } else if (redObstacleDistance > greenObstacleDistance) {
-    setPoint = 65 ;  //Green obstacle is near the vehicle, so it will try to follow the left wall
+    setPoint = 65;  //Green obstacle is near the vehicle, so it will try to follow the left wall
   } else if (redObstacleDistance < greenObstacleDistance) {
-    setPoint = -65 ;
+    setPoint = -65;
   }
 }
 
@@ -334,12 +327,12 @@ void handleSerialCommand(String command) {
         greenObstacleDistance = int(constant_value);  // obstacle distance will be 0 when it is beyond the vision range of the vehicle
         //changeSetPoint();
         break;
-      case 'g': //Green obstacle X value in the frame
-        greenObstacleX = int(constant_value); 
-        break; 
-      case  'w': //Red obstacle X value in the frame 
-        redObstacleX = int(constant_value); 
-        break; 
+      case 'g':  //Green obstacle X value in the frame
+        greenObstacleX = int(constant_value);
+        break;
+      case 'w':  //Red obstacle X value in the frame
+        redObstacleX = int(constant_value);
+        break;
       case 'p':  //Proportional of PID
         Kp = constant_value;
         preferences.putDouble("Kp", Kp);
@@ -477,7 +470,7 @@ void handleButtonPress() {
             lineInterval -= 50;
             break;
           case 6:
-            stopDelay -= 0.1; 
+            stopDelay -= 0.1;
             break;
           case 7:
             restrictedSteer -= (restrictedSteer > 0) ? 1 : 0;
@@ -579,7 +572,6 @@ void saveParameters() {
   preferences.putFloat("stopDelay", stopDelay);
   preferences.putShort("urSteer", unrestrictedSteer);
   preferences.putShort("restrictedSteer", restrictedSteer);
-
 }
 
 void writeAngleToServo() {
