@@ -11,7 +11,7 @@
 #!/usr/bin/env python3
 
 # --- Configuration ---
-DEVELOPING   = 0 # The code is in development mode, and we'll show processed images at different stages, 
+DEVELOPING   = 1 # The code is in development mode, and we'll show processed images at different stages, 
                  # otherwise, there'll be no ui output of the code thus we can run it headless on startup i
                  # in raspberry pie. 
 CAM_TYPE = 0 # 0  = Raspicamera, 1  = webcam. 
@@ -22,7 +22,7 @@ TUNE_HSV = 0 # whether we want to tune the hsv color values for different image 
 SERIAL_READY = 1 #Whether a serial device is connected or not
 
 
-MIN_LINE_AREA = 1000
+MIN_LINE_AREA = 5000
 lineInterval = 1000 # The interval between counting consecutive lines. 
 if MACHINE == 1 and CAM_TYPE==0: 
     from picamera2 import Picamera2
@@ -222,7 +222,7 @@ while True:
                         directionSentFlag = 1  # Round is anticlockwise
             
             # Line counting and checking for lap completion 
-            if (current_time - orange_line_timer > lineInterval) and (max_orange_line_area >= MIN_LINE_AREA): 
+            if (current_time - orange_line_timer > lineInterval) and (max_orange_line_area >= 1000): # We are considering a very small area for line counting compared to the   MIN_LINE_AREA used for line order detection , because whihle moving really fast, not all contours are visible, so we will have to detect for very small contour area 
                 orange_line_timer = current_time
                 orange_line_count+=1
                 if orange_line_count==12:
@@ -236,22 +236,27 @@ while True:
                         message = 'z;' #Command to stop the lapse completely
                         ser.write(message.encode('utf-8'))
                     orange_line_count = -1  # We won't count lines until a new lap is started by pressing the button
+                    roundDirection = 0
 
         
     if DEVELOPING==1: 
         orange_line_masked_frame = cv2.bitwise_and(frame, frame, mask = mask_orange)
-        cv2.imshow("orange line mask", orange_line_masked_frame)
-
         blue_line_masked_frame = cv2.bitwise_and(frame, frame, mask = mask_blue)
-        cv2.imshow("blue line mask", blue_line_masked_frame)
-
         combined_line_mask = cv2.bitwise_or(blue_line_masked_frame, orange_line_masked_frame)
-
+        
         cv2.putText(combined_line_mask,f"lines = {orange_line_count}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
+        if directionSentFlag==-1: 
+            cv2.putText(combined_line_mask, "Clockwise", (50, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 2)
+        elif directionSentFlag==1: 
+            cv2.putText(combined_line_mask, "Anticlockwise", (50, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+
         cv2.imshow("combined_mask", combined_line_mask); 
 
 
         if TUNE_HSV == 1:
+            # Only show individual line frames when we are tuning the hsv values. 
+            cv2.imshow("orange line mask", orange_line_masked_frame)
+            cv2.imshow("blue line mask", blue_line_masked_frame)
             bl_l_h = cv2.getTrackbarPos("Blue Line L_H", "Line HSV trackbars") #bl_l_h = blue line lower hue
             bl_l_s = cv2.getTrackbarPos("Blue Line L_S", "Line HSV trackbars")
             bl_l_v = cv2.getTrackbarPos("Blue Line L_V", "Line HSV trackbars")
