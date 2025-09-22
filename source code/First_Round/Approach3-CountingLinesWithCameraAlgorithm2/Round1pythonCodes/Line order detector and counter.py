@@ -193,44 +193,49 @@ while True:
         blue_line_contours, _ = cv2.findContours(mask_blue, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         orange_line_contours, _ = cv2.findContours(mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        if orange_line_count!=-1: # We'll only do the following processes when blue_line_count is set to zero by pressing the game start button in the vehicle and receiving serial command 'r' from the LLMC. The reason is avoiding early count of the lines by environmental noise before the round has started. 
-            #Checking for blue lines
+        if orange_line_count!=-1: # We'll only do the following processes when orange_line_count is set to zero by pressing the game start button in the vehicle and receiving serial command 'r' from the LLMC. The reason is avoiding early count of the lines by environmental noise before the round has started. 
+            max_blue_line_area = 0
             for contour_index, contour in enumerate(blue_line_contours): 
                 area = cv2.contourArea(contour)
-                if area > MIN_LINE_AREA:
-                    if directionSentFlag == 0:
-                        if SERIAL_READY:
-                            ser.write("b;".encode('utf-8'))
-                        if DEVELOPING:
-                            print("Serial: b;")
-                        directionSentFlag = -1  # Round is anticlockwise
-               
-            #Checking for orange lines
+                #print(f"Blue Area = {area}"); 
+                max_blue_line_area = max(max_blue_line_area, area)
+                           
+            max_orange_line_area = 0
             for cntour_index, contour in enumerate(orange_line_contours): 
                 area = cv2.contourArea(contour)
-                if area > MIN_LINE_AREA:
-                    if(current_time - orange_line_timer > lineInterval):
-                        orange_line_count +=1
-                        orange_line_timer = current_time
-                    if directionSentFlag == 0:
+                #print(f"Orange Aera = {area}"); 
+                max_orange_line_area = max(max_orange_line_area, area)
+
+     
+            if directionSentFlag == 0:
+                if (max_orange_line_area > MIN_LINE_AREA) and (max_orange_line_area > max_blue_line_area): 
                         if SERIAL_READY:
                             ser.write("o;".encode('utf-8'))
                         if DEVELOPING: 
                             print("Serial: o;")
-                        directionSentFlag = 1 # Round is clockwise
+                        directionSentFlag = -1 # Round is clockwise
+                elif (max_blue_line_area > MIN_LINE_AREA) and (max_blue_line_area > max_orange_line_area):
+                        if SERIAL_READY:
+                            ser.write("b;".encode('utf-8'))
+                        if DEVELOPING:
+                            print("Serial: b;")
+                        directionSentFlag = 1  # Round is anticlockwise
             
-            # Checking for lap completion 
-            if orange_line_count==12:
-                if DEVELOPING==1: 
-                    print("3 laps done. Waiting for RESET command"); 
-                if SERIAL_READY==1: 
-                    message = 'x;' #Commands to stop the motor only 
-                    time.sleep(stopDelay/1000)  # Waiting a bit to reach the center fo the tunnel. 
-                    ser.write(message.encode('utf-8'))
-                    time.sleep(2)  #Wating for 2 second before sending the steering off command
-                    message = 'z;' #Command to stop the lapse completely
-                    ser.write(message.encode('utf-8'))
-                orange_line_count = -1  # We won't count lines until a new lap is started by pressing the button
+            # Line counting and checking for lap completion 
+            if (current_time - orange_line_timer > lineInterval) and (max_orange_line_area >= MIN_LINE_AREA): 
+                orange_line_timer = current_time
+                orange_line_count+=1
+                if orange_line_count==12:
+                    if DEVELOPING==1: 
+                        print("3 laps done. Waiting for RESET command"); 
+                    if SERIAL_READY==1: 
+                        message = 'x;' #Commands to stop the motor only 
+                        time.sleep(stopDelay/1000)  # Waiting a bit to reach the center fo the tunnel. 
+                        ser.write(message.encode('utf-8'))
+                        time.sleep(2)  #Wating for 2 second before sending the steering off command
+                        message = 'z;' #Command to stop the lapse completely
+                        ser.write(message.encode('utf-8'))
+                    orange_line_count = -1  # We won't count lines until a new lap is started by pressing the button
 
         
     if DEVELOPING==1: 
@@ -246,34 +251,34 @@ while True:
         cv2.imshow("combined_mask", combined_line_mask); 
 
 
-    if DEVELOPING ==1 and TUNE_HSV == 1:
-        bl_l_h = cv2.getTrackbarPos("Blue Line L_H", "Line HSV trackbars") #bl_l_h = blue line lower hue
-        bl_l_s = cv2.getTrackbarPos("Blue Line L_S", "Line HSV trackbars")
-        bl_l_v = cv2.getTrackbarPos("Blue Line L_V", "Line HSV trackbars")
-    
-        bl_u_h = cv2.getTrackbarPos("Blue Line U_H", "Line HSV trackbars") 
-        bl_u_s = cv2.getTrackbarPos("Blue Line U_S", "Line HSV trackbars")
-        bl_u_v = cv2.getTrackbarPos("Blue Line U_V", "Line HSV trackbars")
-
-        blue_line_lower_bound = np.array([bl_l_h, bl_l_s , bl_l_v ])
-        blue_line_upper_bound = np.array([bl_u_h, bl_u_s,  bl_u_v ])
-
-        ol_l_h = cv2.getTrackbarPos("Orange Line L_H", "Line HSV trackbars") #bl_l_h =  orange line lower hue
-        ol_l_s = cv2.getTrackbarPos("Orange Line L_S", "Line HSV trackbars")
-        ol_l_v = cv2.getTrackbarPos("Orange Line L_V", "Line HSV trackbars")
-    
-        ol_u_h = cv2.getTrackbarPos("Orange Line U_H", "Line HSV trackbars") 
-        ol_u_s = cv2.getTrackbarPos("Orange Line U_S", "Line HSV trackbars")
-        ol_u_v = cv2.getTrackbarPos("Orange Line U_V", "Line HSV trackbars")
+        if TUNE_HSV == 1:
+            bl_l_h = cv2.getTrackbarPos("Blue Line L_H", "Line HSV trackbars") #bl_l_h = blue line lower hue
+            bl_l_s = cv2.getTrackbarPos("Blue Line L_S", "Line HSV trackbars")
+            bl_l_v = cv2.getTrackbarPos("Blue Line L_V", "Line HSV trackbars")
         
-        orange_line_lower_bound = np.array([ol_l_h, ol_l_s , ol_l_v ])
-        orange_line_upper_bound = np.array([ol_u_h, ol_u_s,  ol_u_v ])
+            bl_u_h = cv2.getTrackbarPos("Blue Line U_H", "Line HSV trackbars") 
+            bl_u_s = cv2.getTrackbarPos("Blue Line U_S", "Line HSV trackbars")
+            bl_u_v = cv2.getTrackbarPos("Blue Line U_V", "Line HSV trackbars")
 
-    # Press 'q' to quit
-    if DEVELOPING==1: 
+            blue_line_lower_bound = np.array([bl_l_h, bl_l_s , bl_l_v ])
+            blue_line_upper_bound = np.array([bl_u_h, bl_u_s,  bl_u_v ])
+
+            ol_l_h = cv2.getTrackbarPos("Orange Line L_H", "Line HSV trackbars") #bl_l_h =  orange line lower hue
+            ol_l_s = cv2.getTrackbarPos("Orange Line L_S", "Line HSV trackbars")
+            ol_l_v = cv2.getTrackbarPos("Orange Line L_V", "Line HSV trackbars")
+        
+            ol_u_h = cv2.getTrackbarPos("Orange Line U_H", "Line HSV trackbars") 
+            ol_u_s = cv2.getTrackbarPos("Orange Line U_S", "Line HSV trackbars")
+            ol_u_v = cv2.getTrackbarPos("Orange Line U_V", "Line HSV trackbars")
+            
+            orange_line_lower_bound = np.array([ol_l_h, ol_l_s , ol_l_v ])
+            orange_line_upper_bound = np.array([ol_u_h, ol_u_s,  ol_u_v ])
+            
+        # Press 'q' to quit
         if cv2.waitKey(1) & 0xFF == ord('q'):
             if SERIAL_READY:
                 ser.close()
             break
+
 if DEVELOPING==1:
     cv2.destroyAllWindows()
