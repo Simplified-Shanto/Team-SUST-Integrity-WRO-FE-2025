@@ -94,7 +94,7 @@ short frontDistance = 0;
 int roundDirection = 0;  // 0 = clockwise 1 = ccw
 
 
-#define obstacleDistanceThreshold  100  // We'll take turning obstacle handling approach when the obstacle is within 50 cm towards the vehicle. 
+#define obstacleDistanceThreshold  60  // We'll take turning obstacle handling approach when the obstacle is within 50 cm towards the vehicle. 
 
 void loop() {
 
@@ -129,10 +129,25 @@ void loop() {
 
   if((redObstacleDistance != 0 && (redObstacleDistance < obstacleDistanceThreshold) )|| (greenObstacleDistance!=0 && (greenObstacleDistance < obstacleDistanceThreshold )))
   {
+        steerAngle = unrestrictedSteer;
+
+
+    if(rightDistance!=0 && rightDistance < 8) //wall hitting protection mechanism
+    {
+      steering_servo.write(leftAngle); 
+      delay(10); 
+    }
+    else if (leftDistance!=0 && leftDistance < 8) {
+      steering_servo.write(rightAngle); 
+      delay(10); 
+    }
+
     if(greenObstacleDistance==0) greenObstacleDistance = 2000; 
     if(redObstacleDistance==0) redObstacleDistance = 2000; 
     if( (greenObstacleDistance <= redObstacleDistance)) //We are tackling green obstacle. 
     {
+     // int sp = 0; 
+     // if(greenObstacleDistance < 45)  { sp = greenSetPoint; } // If the object is further than this distance, we'll only try to f
       value = frameCenterX - greenObstacleX; 
       error = value - greenSetPoint; 
        PIDangle = error * Ki + (error - lastError) * stopDelay; 
@@ -159,6 +174,9 @@ void loop() {
     if ( rightDistance == 0 || leftDistance == 0 || (frontDistance != 0 && frontDistance < frontDistanceThreshold))  //Take a turning action on any of these events.
   {
     steerAngle = unrestrictedSteer;
+   if(frontDistance!=0)
+   {
+
     if (rightDistance == 0 && leftDistance != 0)  // 1 0
     {
       rightDistance = terminalDistanceThreshold;
@@ -188,6 +206,23 @@ void loop() {
         //Do nothing, we don't know what to do now.
       }
     }
+    }
+    else
+    {
+      if (setPointMultiplier==-1) //cw round
+      {
+        rightDistance = 90 - (leftDistance + 10);  //Signel sensor pid. 
+      }
+      else if(setPointMultiplier == 1) // anti cw round
+      {
+        leftDistance = 90 - (rightDistance + 10); //Single sensor pid. 
+      }
+      else // round direction not determined, go straight. 
+      {
+        leftDistance = 40; 
+        rightDistance = 40; 
+      }
+    }
   } else {
     steerAngle = restrictedSteer;
   }
@@ -205,6 +240,19 @@ void loop() {
     if (gameStarted == 1) {
    writeAngleToServo();  
   }
+  }
+
+  if(frontDistance!=0 && frontDistance < 10)
+  {
+    if(setPointMultiplier==-1)
+    {
+      steering_servo.write(rightAngle); 
+      delay(15); 
+    }
+    else if (setPointMultiplier==1) {
+      steering_servo.write(leftAngle); 
+      delay(15); 
+    }
   }
 
   //Mechanism 2:
