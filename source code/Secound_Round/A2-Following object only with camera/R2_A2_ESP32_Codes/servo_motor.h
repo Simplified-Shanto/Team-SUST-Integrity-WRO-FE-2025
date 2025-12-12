@@ -6,7 +6,7 @@ Servo steering_servo;
 // #define midAngle 70
 // #define leftAngle 115
 
-#define maxSteer 65
+#define maxSteer 50    
 
 //float halfAngleRange = 45; //Maximum angle it can go from the centre. 
 

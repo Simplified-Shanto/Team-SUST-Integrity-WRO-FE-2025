@@ -24,6 +24,7 @@ SERIAL_READY = 1 #Whether a serial device is connected or not
 
 MIN_LINE_AREA = 5000
 lineInterval = 1000 # The interval between counting consecutive lines. 
+
 if MACHINE == 1 and CAM_TYPE==0: 
     from picamera2 import Picamera2
 import time

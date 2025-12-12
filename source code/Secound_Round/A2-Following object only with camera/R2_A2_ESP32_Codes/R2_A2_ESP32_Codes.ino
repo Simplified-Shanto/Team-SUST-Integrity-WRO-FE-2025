@@ -49,7 +49,7 @@ int steerAngle = restrictedSteer;  // steerAngle = maximum angle used for steeri
 void setup() {
   Serial.begin(115200);
   preferences.begin("wrobot", false);
-  //preferences.clear();  //Only uncomment it when you have the first round code uploaded currently. Upload this code. Then comment this line again.
+ // preferences.clear();  //Only uncomment it when you have the first round code uploaded currently. Upload this code. Then comment this line again.
   lineInterval = preferences.getInt("lineInterval", lineInterval);
   stopDelay = preferences.getFloat("stopDelay", stopDelay);
   Kp = preferences.getDouble("Kp", Kp);
@@ -95,6 +95,38 @@ int roundDirection = 0;  // 0 = clockwise 1 = ccw
 
 
 #define obstacleDistanceThreshold 60  // We'll take turning obstacle handling approach when the obstacle is within 50 cm towards the vehicle.
+#define wallHitDistance  10 // The distance in cm after which we'll trigger a manual steering to avoid collideing with the walls. 
+
+void preventWallHit()
+{
+  if (gameStarted == 1) {
+      if (rightDistance != 0 && rightDistance < wallHitDistance)  //Right wall hitting protection mechanism
+      {
+        steering_servo.write(leftAngle);
+        delay(10);
+      } else if (leftDistance != 0 && leftDistance < wallHitDistance) {  // Left wall hitting protection mechanism
+        steering_servo.write(rightAngle);
+        delay(10);
+      }
+    }
+}
+
+void preventFrontCollission()
+{
+  
+  if(gameStarted==1){
+  if (frontDistance != 0 && frontDistance < 10) {
+    if (setPointMultiplier == -1) {
+      steering_servo.write(rightAngle);
+      delay(15);
+    } else if (setPointMultiplier == 1) {
+      steering_servo.write(leftAngle);
+      delay(15);
+    }
+  }
+  }
+}
+
 
 void loop() {
 
@@ -113,33 +145,11 @@ void loop() {
   leftDistance = leftSonar.ping_cm();
   frontDistance = frontSonar.ping_cm();
 
-  //  if(greenObstacleDistance==0 || redObstacleDistance <= greenObstacleDistance)
-  //   {
-  //        value = frameCenterX - redObstacleX;
-  //        error = value - redSetPoint;
-  //   }
 
-
-
-  // display.clearDisplay();
-  // display.setCursor(0, 0);
-  // display.print("oPID: ");
-  // display.println(value);
-  // display.println(millis()/1000);
-  // display.display();
 
   if ((redObstacleDistance != 0 && (redObstacleDistance < obstacleDistanceThreshold)) || (greenObstacleDistance != 0 && (greenObstacleDistance < obstacleDistanceThreshold))) {
     steerAngle = unrestrictedSteer;
-
-    if (rightDistance != 0 && rightDistance < 8)  //Right wall hitting protection mechanism
-    {
-      steering_servo.write(leftAngle);
-      delay(10);
-    } else if (leftDistance != 0 && leftDistance < 8) {  // Left wall hitting protection mechanism
-      steering_servo.write(rightAngle);
-      delay(10);
-    }
-
+    preventWallHit(); 
     if (greenObstacleDistance == 0) greenObstacleDistance = 2000;  // Taking this obstacle out of focus
     if (redObstacleDistance == 0) redObstacleDistance = 2000;      //Taking away focus from this obstacle
     if ((greenObstacleDistance <= redObstacleDistance))            //We are tackling green obstacle.
@@ -150,10 +160,10 @@ void loop() {
       error = value - greenSetPoint;
       PIDangle = error * Ki + (error - lastError) * stopDelay;
       lastError = error;
-      if (greenObstacleDistance < 25) {
+      if (greenObstacleDistance < 20) {
         steering_servo.write(midAngle);  //Trying to cross the obstacle straight- cuz, when the vehcicle is too close to the object, it shows wrong X position and distance due to the curvature of the lense of the camera.
       } else {
-        writeAngleToServo();
+        if (gameStarted == 1) { writeAngleToServo(); }
       }
     }
     if ((redObstacleDistance <= greenObstacleDistance)) {
@@ -161,10 +171,10 @@ void loop() {
       error = value - redSetPoint;
       PIDangle = error * Ki + (error - lastError) * stopDelay;
       lastError = error;
-      if (redObstacleDistance < 25) {
+      if (redObstacleDistance < 20) {
         steering_servo.write(midAngle);  //Trying to cross the obstacle straight by the side.
       } else {
-        writeAngleToServo();
+        if (gameStarted == 1) { writeAngleToServo(); }
       }
     }
 
@@ -194,22 +204,22 @@ void loop() {
           }
           digitalWrite(buzzerPin, LOW);
         } else if (leftDistance == 0 && rightDistance == 0) {       //0 0 Both sonar sensor is reading zero, so we are resorting to the round direction for taking turns.
-              if (gameStarted == 1) { digitalWrite(buzzerPin, HIGH); }  // Notifying that both sensor is currently reading zero.
-              
-              if (setPointMultiplier == -1) {                           //cw round
-                rightDistance = terminalDistanceThreshold;
-              } else if (setPointMultiplier == 1) {  //ccw round
-                leftDistance = terminalDistanceThreshold;
-              } else if (setPointMultiplier == 0)  // Round direction haven't been determined yet
-              {
-                //Do nothing, we don't know what to do now. Basically this doesn't happen, because the vehicle moves at a very slow-safe speed until the line order is 
-                // sent to it via serial. So with that speed, it's really unlikely to collide with walls for small periods of both sensors reading zero. 
-              }
+          if (gameStarted == 1) { digitalWrite(buzzerPin, HIGH); }  // Notifying that both sensor is currently reading zero.
+
+          if (setPointMultiplier == -1) {  //cw round
+            rightDistance = terminalDistanceThreshold;
+          } else if (setPointMultiplier == 1) {  //ccw round
+            leftDistance = terminalDistanceThreshold;
+          } else if (setPointMultiplier == 0)  // Round direction haven't been determined yet
+          {
+            //Do nothing, we don't know what to do now. Basically this doesn't happen, because the vehicle moves at a very slow-safe speed until the line order is
+            // sent to it via serial. So with that speed, it's really unlikely to collide with walls for small periods of both sensors reading zero.
+          }
         }
-      } else {   // The vehicle has already taken turn, and is now facing straight toward a tunnel from the previous tunnel and either left or right sensor is signalling the turning event
+      } else {                         // The vehicle has already taken turn, and is now facing straight toward a tunnel from the previous tunnel and either left or right sensor is signalling the turning event
         if (setPointMultiplier == -1)  //cw round
         {
-          rightDistance = 90 - (leftDistance + 10);  //Single sensor pid. Tunnel width = 90 cm, vehicle width = 10 cm. 
+          rightDistance = 90 - (leftDistance + 10);  //Single sensor pid. Tunnel width = 90 cm, vehicle width = 10 cm.
         } else if (setPointMultiplier == 1)          // anti cw round
         {
           leftDistance = 90 - (rightDistance + 10);  //Single sensor pid.
@@ -219,7 +229,7 @@ void loop() {
           rightDistance = 40;
         }
       }
-    } else { // We are in a straight tunnel section, no need to take sharp turns, so restrict the steerAngle to avoid the vehicle' swinging motion. 
+    } else {  // We are in a straight tunnel section, no need to take sharp turns, so restrict the steerAngle to avoid the vehicle' swinging motion.
       steerAngle = restrictedSteer;
     }
 
@@ -239,17 +249,8 @@ void loop() {
     }
   }
 
-  if (frontDistance != 0 && frontDistance < 10) {
-    if (setPointMultiplier == -1) {
-      steering_servo.write(rightAngle);
-      delay(15);
-    } else if (setPointMultiplier == 1) {
-      steering_servo.write(leftAngle);
-      delay(15);
-    }
-  }
-
-  //Mechanism 2:
+  preventWallHit(); 
+  preventFrontCollission(); 
 }
 
 
@@ -458,10 +459,10 @@ void handleButtonPress() {
             forwardSpeed -= (forwardSpeed >= 2) ? 2 : 0;
             break;
           case 2:
-            Kp -= 0.5;
+            Kp -= 0.1;
             break;
           case 3:
-            Ki -= 0.5;
+            Ki -= 0.1;
             break;
           case 4:
             Kd -= 0.05;
@@ -516,10 +517,10 @@ void handleButtonPress() {
             forwardSpeed += 2;
             break;
           case 2:
-            Kp += 0.5;
+            Kp += 0.1;
             break;
           case 3:
-            Ki += 0.5;
+            Ki += 0.1;
             break;
           case 4:
             Kd += 0.05;
