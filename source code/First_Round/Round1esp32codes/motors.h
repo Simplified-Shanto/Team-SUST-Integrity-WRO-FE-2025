@@ -6,10 +6,12 @@
 
 int forwardSpeed = 120; // Out of 255
 
-
 void goForward(int speed)
 {
     digitalWrite(in1Pin, HIGH);
     digitalWrite(in2Pin, LOW);
-    ledcWrite(LEDC_CHANNEL, speed);
+
+    // speed must be 0..255 for 8-bit
+    speed = constrain(speed, 0, 255);
+    ledcWrite(pwmPin, speed);     
 }

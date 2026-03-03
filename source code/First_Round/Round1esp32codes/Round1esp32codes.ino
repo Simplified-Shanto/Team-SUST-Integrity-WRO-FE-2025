@@ -48,8 +48,7 @@ void setup() {
   steering_servo.write(midAngle);
   delay(1000);
 
-  ledcSetup(LEDC_CHANNEL, 1000, 8);     // Set LEDC channel, frequency, and resolution
-  ledcAttachPin(pwmPin, LEDC_CHANNEL);  // Attach the GPIO pin to the LEDC channel
+  ledcAttach(pwmPin, 1000, 8);   // freq=1000Hz, resolution=8-bit
   pinMode(in1Pin, OUTPUT);
   pinMode(in2Pin, OUTPUT);
 
@@ -80,6 +79,8 @@ long long pressTime2 = millis();
 long long pressTime1 = millis();
 bool editParameter = 1;
 unsigned short parameterIndex = 0;  // 0  = Speed, 1 = Kp, 2 = Kd
+
+
 
 
 void loop() {
